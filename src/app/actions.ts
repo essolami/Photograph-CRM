@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth";
 
 export type ClientActionState = {
   error?: string;
@@ -41,6 +42,7 @@ export async function createClient(
   formData: FormData,
 ): Promise<ClientActionState> {
   try {
+    await requirePermission("canManageClients");
     await prisma.client.create({ data: readClient(formData) });
     revalidatePath("/");
     return { success: true };
@@ -54,6 +56,7 @@ export async function updateClient(
   formData: FormData,
 ): Promise<ClientActionState> {
   try {
+    await requirePermission("canManageClients");
     const id = Number(formData.get("id"));
     if (!Number.isInteger(id)) throw new Error("Invalid client.");
     await prisma.client.update({ where: { id }, data: readClient(formData) });
@@ -65,6 +68,7 @@ export async function updateClient(
 }
 
 export async function deleteClient(formData: FormData) {
+  await requirePermission("canManageClients");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id)) return;
   await prisma.client.delete({ where: { id } });

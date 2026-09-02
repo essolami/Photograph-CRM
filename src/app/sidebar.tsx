@@ -1,3 +1,7 @@
+import { logout } from "./auth-actions";
+
+type SidebarUser = { name: string; email: string; canViewClients: boolean; canViewInvoices: boolean; canManageUsers: boolean };
+
 const navItems = [
   { label: "Dashboard", icon: "dashboard" },
   { label: "Clients", icon: "clients", active: true },
@@ -26,27 +30,28 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ user }: { user: SidebarUser }) {
+  const visibleItems = navItems.filter(item => item.label !== "Clients" || user.canViewClients).filter(item => item.label !== "Invoices" || user.canViewInvoices);
   return (
     <aside className="hidden h-screen w-64 shrink-0 flex-col bg-slate-950 px-4 py-6 lg:sticky lg:top-0 lg:flex">
       <div className="px-2"><Brand /></div>
       <nav className="mt-10 flex-1" aria-label="Main navigation">
         <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Workspace</p>
         <div className="space-y-1">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <a key={item.label} href={item.active ? "/" : "#"} aria-current={item.active ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${item.active ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}>
               <Icon name={item.icon} />{item.label}
             </a>
           ))}
         </div>
         <p className="mb-3 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">Manage</p>
-        <a href="#" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"><Icon name="invoice"/> Settings</a>
+        {user.canManageUsers && <a href="/admin" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"><Icon name="clients"/> Users & permissions</a>}
       </nav>
       <div className="border-t border-slate-800 pt-5">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-indigo-400 to-violet-600 text-xs font-bold text-white">AP</span>
-          <div className="min-w-0"><p className="truncate text-sm font-semibold text-white">Studio Admin</p><p className="truncate text-xs text-slate-500">Photographer</p></div>
-          <span className="ml-auto text-slate-600">•••</span>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{user.name}</p><p className="truncate text-xs text-slate-500">{user.email}</p></div>
+          <form action={logout}><button title="Sign out" aria-label="Sign out" className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-900 hover:text-white">↪</button></form>
         </div>
       </div>
     </aside>

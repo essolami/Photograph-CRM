@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { hashPassword } from "../src/lib/password";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -26,6 +27,23 @@ const testClients = [
 ];
 
 async function main() {
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@lumacrm.local";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "Admin123!";
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
+      name: "Studio Admin",
+      email: adminEmail,
+      passwordHash: await hashPassword(adminPassword),
+      canViewClients: true,
+      canManageClients: true,
+      canViewInvoices: true,
+      canManageInvoices: true,
+      canManageUsers: true,
+    },
+  });
+
   for (const client of testClients) {
     await prisma.client.upsert({
       where: { email: client.email },
