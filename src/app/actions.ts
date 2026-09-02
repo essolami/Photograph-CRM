@@ -11,7 +11,9 @@ export type ClientActionState = {
 
 function readClient(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
 
   if (!name || !email) {
@@ -30,7 +32,10 @@ function friendlyError(error: unknown) {
     if (error.message.includes("Unique constraint")) {
       return "A client with this email already exists.";
     }
-    if (error.message === "Name and email are required." || error.message === "Enter a valid email address.") {
+    if (
+      error.message === "Name and email are required." ||
+      error.message === "Enter a valid email address."
+    ) {
       return error.message;
     }
   }

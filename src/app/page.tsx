@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const user = await requireUser();
-  if (!user.canViewClients) redirect(user.canManageUsers ? "/admin" : "/forbidden");
+  if (!user.canViewClients)
+    redirect(user.canManageUsers ? "/admin" : "/forbidden");
   const clients = await prisma.client.findMany({
     orderBy: { createdAt: "desc" },
   });
