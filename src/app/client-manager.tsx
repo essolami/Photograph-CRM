@@ -65,7 +65,7 @@ export function ClientManager({ clients }: { clients: Client[] }) {
     <>
       <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-sm font-semibold tracking-wide text-indigo-600">PHOTOGRAPHER CRM</p>
+          <p className="mb-2 text-sm font-semibold tracking-wide text-indigo-600">CLIENT DIRECTORY</p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Clients</h1>
           <p className="mt-2 text-slate-500">Keep your contacts organized and close at hand.</p>
         </div>
