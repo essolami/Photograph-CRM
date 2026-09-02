@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { createUser } from "./actions";
+import { useToast } from "../toast";
 
 const permissions = [
   ["canViewClients", "View clients"], ["canManageClients", "Create, edit & delete clients"],
@@ -10,9 +11,10 @@ const permissions = [
 ];
 
 export function CreateUserForm() {
+  const toast = useToast();
   const [state, action, pending] = useActionState(createUser, {});
   const form = useRef<HTMLFormElement>(null);
-  useEffect(() => { if (state.success) form.current?.reset(); }, [state.success]);
+  useEffect(() => { if (state.success) { form.current?.reset(); toast.success("User created successfully."); } if (state.error) toast.error(state.error); }, [state.success, state.error, toast]);
   return <form ref={form} action={action} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
     <h2 className="text-lg font-bold text-slate-950">Create user</h2><p className="mt-1 text-sm text-slate-500">Add a team member and choose their access.</p>
     <div className="mt-5 grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Full name</span><input className="field" name="name" required /></label><label><span className="mb-2 block text-sm font-medium">Email</span><input className="field" name="email" type="email" required /></label><label className="sm:col-span-2"><span className="mb-2 block text-sm font-medium">Temporary password</span><input className="field" name="password" type="password" minLength={8} required /></label></div>

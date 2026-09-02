@@ -22,18 +22,21 @@ export async function createUser(_state: UserActionState, data: FormData): Promi
   } catch { return { error: "A user with this email may already exist." }; }
 }
 
-export async function updateUser(data: FormData) {
-  const actor = await requirePermission("canManageUsers");
-  const id = Number(data.get("id"));
-  if (!Number.isInteger(id)) return;
-  const isSelf = actor.id === id;
-  await prisma.user.update({ where: { id }, data: {
-    isActive: isSelf ? true : checked(data, "isActive"),
-    canViewClients: checked(data, "canViewClients"),
-    canManageClients: checked(data, "canManageClients"),
-    canViewInvoices: checked(data, "canViewInvoices"),
-    canManageInvoices: checked(data, "canManageInvoices"),
-    canManageUsers: isSelf ? true : checked(data, "canManageUsers"),
-  } });
-  revalidatePath("/admin");
+export async function updateUser(_state: UserActionState, data: FormData): Promise<UserActionState> {
+  try {
+    const actor = await requirePermission("canManageUsers");
+    const id = Number(data.get("id"));
+    if (!Number.isInteger(id)) return { error: "Invalid user." };
+    const isSelf = actor.id === id;
+    await prisma.user.update({ where: { id }, data: {
+      isActive: isSelf ? true : checked(data, "isActive"),
+      canViewClients: checked(data, "canViewClients"),
+      canManageClients: checked(data, "canManageClients"),
+      canViewInvoices: checked(data, "canViewInvoices"),
+      canManageInvoices: checked(data, "canManageInvoices"),
+      canManageUsers: isSelf ? true : checked(data, "canManageUsers"),
+    } });
+    revalidatePath("/admin");
+    return { success: true };
+  } catch { return { error: "Could not save this user's permissions." }; }
 }

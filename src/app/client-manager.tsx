@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createClient, deleteClient, updateClient, type ClientActionState } from "./actions";
+import { useToast } from "./toast";
 
 type Client = {
   id: number;
@@ -18,12 +19,14 @@ function initials(name: string) {
 }
 
 function ClientForm({ client, onDone, onCancel }: { client?: Client; onDone: () => void; onCancel: () => void }) {
+  const toast = useToast();
   const action = client ? updateClient : createClient;
   const [state, formAction, pending] = useActionState(action, initialState);
 
   useEffect(() => {
-    if (state.success) onDone();
-  }, [state.success, onDone]);
+    if (state.success) { toast.success(client ? "Client updated successfully." : "Client created successfully."); onDone(); }
+    if (state.error) toast.error(state.error);
+  }, [state.success, state.error, onDone, client, toast]);
 
   return (
     <form action={formAction} className="mt-6 space-y-5">
@@ -52,6 +55,7 @@ function ClientForm({ client, onDone, onCancel }: { client?: Client; onDone: () 
 }
 
 export function ClientManager({ clients, canManage }: { clients: Client[]; canManage: boolean }) {
+  const toast = useToast();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Client | null | "new">(null);
   const filtered = useMemo(() => {
@@ -95,7 +99,7 @@ export function ClientManager({ clients, canManage }: { clients: Client[]; canMa
                     <td className="px-6 py-4"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{initials(client.name)}</span><div><p className="font-semibold text-slate-900">{client.name}</p><a href={`mailto:${client.email}`} className="text-slate-500 hover:text-indigo-600">{client.email}</a></div></div></td>
                     <td className="px-6 py-4 text-slate-600">{client.phone ? <a href={`tel:${client.phone}`} className="hover:text-indigo-600">{client.phone}</a> : <span className="text-slate-400">Not provided</span>}</td>
                     <td className="px-6 py-4 text-slate-500">{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(client.createdAt))}</td>
-                    <td className="px-6 py-4"><div className="flex justify-end gap-2">{canManage ? <><button onClick={() => setEditing(client)} className="action-button">Edit</button><form action={deleteClient} onSubmit={(event) => { if (!window.confirm(`Delete ${client.name}? This cannot be undone.`)) event.preventDefault(); }}><input type="hidden" name="id" value={client.id}/><button className="action-button text-red-600 hover:border-red-200 hover:bg-red-50">Delete</button></form></> : <span className="text-xs text-slate-400">View only</span>}</div></td>
+                    <td className="px-6 py-4"><div className="flex justify-end gap-2">{canManage ? <><button onClick={() => setEditing(client)} className="action-button">Edit</button><form action={async (data) => { try { await deleteClient(data); toast.success("Client deleted successfully."); } catch { toast.error("Could not delete the client."); } }} onSubmit={(event) => { if (!window.confirm(`Delete ${client.name}? This cannot be undone.`)) event.preventDefault(); }}><input type="hidden" name="id" value={client.id}/><button className="action-button text-red-600 hover:border-red-200 hover:bg-red-50">Delete</button></form></> : <span className="text-xs text-slate-400">View only</span>}</div></td>
                   </tr>
                 ))}
               </tbody>
