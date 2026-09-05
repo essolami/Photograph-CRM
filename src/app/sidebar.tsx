@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { SettingsNav } from "./parametres/settings-nav";
 import { logout } from "./auth-actions";
 
 type SidebarUser = {
@@ -9,11 +11,11 @@ type SidebarUser = {
 };
 
 const navItems = [
-  { label: "Dashboard", icon: "dashboard" },
+  { label: "Tableau de bord", icon: "dashboard" },
   { label: "Clients", icon: "clients", active: true },
-  { label: "Bookings", icon: "calendar" },
-  { label: "Projects", icon: "camera" },
-  { label: "Invoices", icon: "invoice" },
+  { label: "Réservations", icon: "calendar" },
+  { label: "Projets", icon: "camera" },
+  { label: "Factures", icon: "invoice" },
 ];
 
 function Icon({ name }: { name: string }) {
@@ -57,7 +59,13 @@ function Icon({ name }: { name: string }) {
   );
 }
 
-export function Brand({ compact = false }: { compact?: boolean }) {
+export function Brand({
+  compact = false,
+  dark = false,
+}: {
+  compact?: boolean;
+  dark?: boolean;
+}) {
   return (
     <div className="flex items-center gap-3">
       <span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-indigo-600 shadow-lg shadow-indigo-950/20">
@@ -82,11 +90,18 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       </span>
       {!compact && (
         <span>
-          <span className="block text-lg font-bold tracking-tight text-white">
-            Luma<span className="text-indigo-400">CRM</span>
+          <span
+            className={`block text-lg font-extrabold tracking-tight ${dark ? "text-white" : "text-slate-950"}`}
+          >
+            Luma
+            <span className={dark ? "text-indigo-300" : "text-indigo-600"}>
+              CRM
+            </span>
           </span>
-          <span className="block text-[10px] font-medium tracking-[0.2em] text-slate-500 uppercase">
-            Photography studio
+          <span
+            className={`block text-[10px] font-semibold tracking-[0.2em] uppercase ${dark ? "text-indigo-200/70" : "text-slate-500"}`}
+          >
+            Studio photographique
           </span>
         </span>
       )}
@@ -94,60 +109,77 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function Sidebar({ user }: { user: SidebarUser }) {
+export function Sidebar({
+  user,
+  activePage = "clients",
+}: {
+  user: SidebarUser;
+  activePage?: "clients" | "settings" | "admin";
+}) {
   const visibleItems = navItems
     .filter((item) => item.label !== "Clients" || user.canViewClients)
-    .filter((item) => item.label !== "Invoices" || user.canViewInvoices);
+    .filter((item) => item.label !== "Factures" || user.canViewInvoices);
   return (
-    <aside className="hidden h-screen w-64 shrink-0 flex-col bg-slate-950 px-4 py-6 lg:sticky lg:top-0 lg:flex">
+    <aside className="hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-indigo-950 bg-gradient-to-b from-[#242450] via-[#1b2140] to-[#11182c] px-4 py-7 lg:sticky lg:top-0 lg:flex">
       <div className="px-2">
-        <Brand />
+        <Brand dark />
       </div>
-      <nav className="mt-10 flex-1" aria-label="Main navigation">
-        <p className="mb-3 px-3 text-[10px] font-semibold tracking-[0.2em] text-slate-600 uppercase">
-          Workspace
+      <nav className="mt-10 flex-1" aria-label="Navigation principale">
+        <p className="mb-3 px-3 text-[10px] font-semibold tracking-[0.2em] text-indigo-200/60 uppercase">
+          Espace de travail
         </p>
         <div className="space-y-1">
           {visibleItems.map((item) => (
             <a
               key={item.label}
               href={item.active ? "/" : "#"}
-              aria-current={item.active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${item.active ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}
+              aria-current={
+                item.active && activePage === "clients" ? "page" : undefined
+              }
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${item.active && activePage === "clients" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
             >
               <Icon name={item.icon} />
               {item.label}
             </a>
           ))}
         </div>
-        <p className="mt-8 mb-3 px-3 text-[10px] font-semibold tracking-[0.2em] text-slate-600 uppercase">
-          Manage
-        </p>
+        {user.canManageUsers && (
+          <>
+            <p className="mt-8 mb-3 px-3 text-[10px] font-semibold tracking-[0.2em] text-indigo-200/60">
+              PARAMÈTRES
+            </p>
+            <SettingsNav />
+          </>
+        )}
         {user.canManageUsers && (
           <a
             href="/admin"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"
+            aria-current={activePage === "admin" ? "page" : undefined}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${activePage === "admin" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
           >
-            <Icon name="clients" /> Users & permissions
+            <Icon name="clients" /> Utilisateurs et accès
           </a>
         )}
       </nav>
-      <div className="border-t border-slate-800 pt-5">
+      <div className="mt-8 border-t border-white/10 pt-5">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-indigo-400 to-violet-600 text-xs font-bold text-white">
-            AP
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-indigo-400/20 text-xs font-bold text-indigo-200">
+            {user.name
+              .split(" ")
+              .map((part) => part[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">
-              {user.name}
-            </p>
-            <p className="truncate text-xs text-slate-500">{user.email}</p>
+            <p className="truncate text-sm font-bold text-white">{user.name}</p>
+            <p className="truncate text-xs text-indigo-200/70">{user.email}</p>
           </div>
           <form action={logout}>
             <button
-              title="Sign out"
-              aria-label="Sign out"
-              className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-900 hover:text-white"
+              title="Se déconnecter"
+              aria-label="Se déconnecter"
+              className="rounded-lg px-2 py-1 text-indigo-200/70 hover:bg-white/10 hover:text-white"
             >
               ↪
             </button>
@@ -160,14 +192,15 @@ export function Sidebar({ user }: { user: SidebarUser }) {
 
 export function MobileHeader() {
   return (
-    <header className="flex items-center justify-between bg-slate-950 px-4 py-3 lg:hidden">
-      <Brand />
-      <button
-        aria-label="Open menu"
-        className="grid h-10 w-10 place-items-center rounded-xl border border-slate-800 text-xl text-white"
+    <header className="flex items-center justify-between border-b border-white/10 bg-[#242450] px-4 py-3 lg:hidden">
+      <Brand dark />
+      <Link
+        href="/parametres"
+        aria-label="Paramètres"
+        className="grid h-10 w-10 place-items-center rounded-xl border border-white/15 text-xl text-indigo-100"
       >
-        ☰
-      </button>
+        ⚙
+      </Link>
     </header>
   );
 }

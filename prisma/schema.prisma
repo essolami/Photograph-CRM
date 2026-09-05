@@ -10,8 +10,76 @@ datasource db {
 model Client {
   id        Int      @id @default(autoincrement())
   name      String
-  email     String   @unique
+  email     String?  @unique
   phone     String?
+  defenseDate DateTime? @db.Date
+  facultyId Int?
+  packId Int?
+  isDuo Boolean @default(false)
+  facultyName String?
+  packName String?
+  basePrice Decimal @default(0) @db.Decimal(10, 2)
+  supplements Json @default("[]")
+  advance Decimal @default(0) @db.Decimal(10, 2)
+  discount Decimal @default(0) @db.Decimal(10, 2)
+  total Decimal @default(0) @db.Decimal(10, 2)
+  photographerId Int?
+  editorId Int?
+  photographer Photographer? @relation(fields: [photographerId], references: [id], onDelete: SetNull)
+  editor Editor? @relation(fields: [editorId], references: [id], onDelete: SetNull)
+  status String @default("En cours")
+  driveUrl String?
+  comment String?
+  grossProfit Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Faculty {
+  rates FacultyPackRate[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  soloPrice Decimal  @default(0) @db.Decimal(10, 2)
+  duoPrice  Decimal  @default(0) @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pack {
+  rates FacultyPackRate[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  price     Decimal  @default(0) @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplement {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  price     Decimal  @default(0) @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Photographer {
+  clients Client[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Editor {
+  clients Client[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -42,4 +110,15 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model FacultyPackRate {
+  id Int @id @default(autoincrement())
+  facultyId Int
+  packId Int
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  pack Pack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  soloPrice Decimal @db.Decimal(10, 2)
+  duoPrice Decimal @db.Decimal(10, 2)
+  @@unique([facultyId, packId])
 }

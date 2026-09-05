@@ -51,6 +51,57 @@ async function main() {
       create: client,
     });
   }
+
+  for (const name of ["FMDC/FMPC", "Autres"]) {
+    await prisma.faculty.upsert({
+      where: { name },
+      update: {},
+      create: { name, soloPrice: 0, duoPrice: 0 },
+    });
+  }
+
+  const prices = [
+    { name: "FMDC/FMPC", solo: [1400, 1800, 2500], duo: [2100, 2600, 3000] },
+    { name: "Autres", solo: [1600, 2200, 2700], duo: [2500, 3000, 4000] },
+  ];
+  for (const row of prices) {
+    const faculty = await prisma.faculty.findUniqueOrThrow({
+      where: { name: row.name },
+    });
+    for (let i = 0; i < 3; i++) {
+      const pack = await prisma.pack.upsert({
+        where: { name: `Pack ${i + 1}` },
+        update: {},
+        create: { name: `Pack ${i + 1}`, price: prices[0].solo[i] },
+      });
+      await prisma.facultyPackRate.upsert({
+        where: { facultyId_packId: { facultyId: faculty.id, packId: pack.id } },
+        update: {},
+        create: {
+          facultyId: faculty.id,
+          packId: pack.id,
+          soloPrice: row.solo[i],
+          duoPrice: row.duo[i],
+        },
+      });
+    }
+  }
+
+  for (const [name, price] of [
+    ["Toge", 400],
+    ["Perso toge", 30],
+    ["Tableau", 400],
+    ["Miroir", 400],
+    ["Album", 600],
+    ["Photobook", 1200],
+    ["Déco", 1200],
+  ] as const) {
+    await prisma.supplement.upsert({
+      where: { name },
+      update: {},
+      create: { name, price, isActive: true },
+    });
+  }
 }
 
 main()

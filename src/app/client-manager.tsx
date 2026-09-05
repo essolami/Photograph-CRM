@@ -1,367 +1,636 @@
 "use client";
-
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ActionIcon } from "./action-icon";
+import { deleteClient, updateClientQuick } from "./actions";
+import { ClientForm } from "./client-form";
+import { SettingsDrawer } from "./parametres/settings-drawer";
 import {
-  createClient,
-  deleteClient,
-  updateClient,
-  type ClientActionState,
-} from "./actions";
-import { useToast } from "./toast";
-
-type Client = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  createdAt: Date;
-};
-
-const initialState: ClientActionState = {};
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
-}
-
-function ClientForm({
-  client,
-  onDone,
-  onCancel,
-}: {
-  client?: Client;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const toast = useToast();
-  const action = client ? updateClient : createClient;
-  const [state, formAction, pending] = useActionState(action, initialState);
-
-  useEffect(() => {
-    if (state.success) {
-      toast.success(
-        client
-          ? "Client updated successfully."
-          : "Client created successfully.",
-      );
-      onDone();
-    }
-    if (state.error) toast.error(state.error);
-  }, [state.success, state.error, onDone, client, toast]);
-
-  return (
-    <form action={formAction} className="mt-6 space-y-5">
-      {client && <input type="hidden" name="id" value={client.id} />}
-      <label className="block">
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Full name
-        </span>
-        <input
-          name="name"
-          defaultValue={client?.name}
-          required
-          autoFocus
-          placeholder="e.g. Sofia Bennett"
-          className="field"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Email address
-        </span>
-        <input
-          name="email"
-          type="email"
-          defaultValue={client?.email}
-          required
-          placeholder="sofia@example.com"
-          className="field"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Phone <span className="font-normal text-slate-400">(optional)</span>
-        </span>
-        <input
-          name="phone"
-          type="tel"
-          defaultValue={client?.phone ?? ""}
-          placeholder="+212 600 000 000"
-          className="field"
-        />
-      </label>
-      {state.error && (
-        <p
-          role="alert"
-          className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {state.error}
-        </p>
-      )}
-      <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
-        <button type="button" onClick={onCancel} className="btn-secondary">
-          Cancel
-        </button>
-        <button
-          disabled={pending}
-          className="btn-primary disabled:cursor-wait disabled:opacity-60"
-        >
-          {pending ? "Saving…" : client ? "Save changes" : "Add client"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
+  formatDh,
+  remainingPrice,
+  projectStatuses,
+  type ClientRecord,
+  type ClientCatalog,
+} from "@/lib/client-data";
+const dateLabel = (value: string) =>
+  value
+    ? new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC" }).format(
+        new Date(`${value}T00:00:00Z`),
+      )
+    : "À renseigner";
 export function ClientManager({
   clients,
+  catalog,
   canManage,
+  canExport,
 }: {
-  clients: Client[];
+  clients: ClientRecord[];
+  catalog: ClientCatalog;
   canManage: boolean;
+  canExport: boolean;
 }) {
-  const toast = useToast();
   const [query, setQuery] = useState("");
-  const [editing, setEditing] = useState<Client | null | "new">(null);
-  const filtered = useMemo(() => {
-    const value = query.toLowerCase().trim();
-    return clients.filter(
-      (client) =>
-        !value ||
-        `${client.name} ${client.email} ${client.phone ?? ""}`
-          .toLowerCase()
-          .includes(value),
+  const [status, setStatus] = useState("");
+  const [pack, setPack] = useState("");
+  const [photographer, setPhotographer] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [todayOnly, setTodayOnly] = useState(false);
+  const [facultyFilter, setFacultyFilter] = useState<
+    "" | "FMDC/FMPC" | "Autres"
+  >("");
+  const [editing, setEditing] = useState<ClientRecord | "new" | null>(null);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [updating, startUpdate] = useTransition();
+  const router = useRouter();
+  const normalize = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr");
+  const filtered = clients.filter(
+    (c) =>
+      normalize(`${c.name} ${c.phone ?? ""} ${c.email ?? ""}`).includes(
+        normalize(query.trim()),
+      ) &&
+      (!status || c.status === status) &&
+      (!pack || String(c.packId) === pack) &&
+      (!photographer ||
+        (photographer === "none"
+          ? !c.photographerId
+          : String(c.photographerId) === photographer)) &&
+      (!from || c.defenseDate >= from) &&
+      (!to || (Boolean(c.defenseDate) && c.defenseDate <= to)) &&
+      (!todayOnly || c.defenseDate === new Date().toISOString().slice(0, 10)) &&
+      (!facultyFilter ||
+        normalize(c.facultyName ?? "") === normalize(facultyFilter)),
+  );
+  const packOptions = Array.from(
+    new Map([
+      ...catalog.packs.map((p) => [p.id, p.name] as const),
+      ...clients
+        .filter((c) => c.packId && c.packName)
+        .map((c) => [c.packId!, c.packName!] as const),
+    ]),
+  );
+  const person = (id: number | null) =>
+    catalog.photographers.find((p) => p.id === id)?.name ?? "Non affecté";
+  const whatsappUrl = (phone: string | null) => {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, "");
+    const normalized = digits.startsWith("0")
+      ? `212${digits.slice(1)}`
+      : digits;
+    return normalized.length >= 10 ? `https://wa.me/${normalized}` : null;
+  };
+  const photographerWhatsAppUrl = (client: ClientRecord) => {
+    const photographer = catalog.photographers.find(
+      (person) => person.id === client.photographerId,
     );
-  }, [clients, query]);
-
-  const close = () => setEditing(null);
-
+    const phoneUrl = whatsappUrl(photographer?.phone ?? null);
+    if (!phoneUrl) return null;
+    const message = [
+      `Bonjour ${photographer?.name},`,
+      "Voici les informations de votre séance :",
+      `Client : ${client.name}`,
+      `Téléphone : ${client.phone || "Non renseigné"}`,
+      `Soutenance : ${dateLabel(client.defenseDate)}`,
+      `Pack : ${client.packName || "Non renseigné"}`,
+      `Faculté : ${client.facultyName || "Non renseignée"}`,
+      `Format : ${client.isDuo ? "Binôme" : "Solo"}`,
+      `Suppléments : ${client.supplements.length ? client.supplements.map((item) => item.name).join(", ") : "Aucun"}`,
+      client.comment ? `Commentaire : ${client.comment}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    return `${phoneUrl}?text=${encodeURIComponent(message)}`;
+  };
+  async function remove(c: ClientRecord) {
+    if (
+      !window.confirm(
+        `Supprimer le dossier de ${c.name} ? Cette action est définitive.`,
+      )
+    )
+      return;
+    setDeleting(c.id);
+    setError("");
+    setNotice("");
+    try {
+      const data = new FormData();
+      data.set("id", String(c.id));
+      await deleteClient(data);
+      setNotice("Client supprimé.");
+    } catch {
+      setError("Impossible de supprimer ce client.");
+    } finally {
+      setDeleting(null);
+    }
+  }
+  function quickUpdate(
+    client: ClientRecord,
+    field: "photographerId" | "status",
+    value: string,
+  ) {
+    startUpdate(async () => {
+      const data = new FormData();
+      data.set("id", String(client.id));
+      data.set(
+        "photographerId",
+        field === "photographerId"
+          ? value
+          : String(client.photographerId ?? ""),
+      );
+      data.set("status", field === "status" ? value : client.status);
+      const result = await updateClientQuick(data);
+      if (result.error) setError(result.error);
+      else {
+        setError("");
+        setNotice("Mise à jour enregistrée.");
+        router.refresh();
+      }
+    });
+  }
   return (
     <>
-      <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="mb-2 text-sm font-semibold tracking-wide text-indigo-600">
-            CLIENT DIRECTORY
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Clients
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Keep your contacts organized and close at hand.
-          </p>
-        </div>
-        {canManage && (
-          <button
-            onClick={() => setEditing("new")}
-            className="btn-primary shrink-0"
-          >
-            <span className="text-lg leading-none">＋</span> Add client
-          </button>
-        )}
-      </div>
+      <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-indigo-500 uppercase">
+        Gestion du studio
+      </p>
+      <h1 className="text-3xl font-bold sm:text-4xl">Clients</h1>
+      <p className="mt-3 mb-8 text-sm text-slate-500">
+        Retrouvez vos soutenances, vos prestations et l’avancement de chaque
+        dossier.
+      </p>
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="w-full max-w-xl flex-1 text-xs font-semibold text-slate-500">
+            Rechercher
+            <input
+              className="field mt-2"
+              type="search"
+              placeholder="Rechercher par nom, email, Télephone...."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="flex items-end gap-3">
+            <div>
+              <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-slate-400 uppercase">
+                Date
+              </p>
+              <button
+                type="button"
+                className={`rounded-xl border px-3 py-3 text-xs font-semibold ${todayOnly ? "border-indigo-200 bg-indigo-600 text-white" : "border-slate-200 text-slate-600"}`}
+                onClick={() => setTodayOnly((current) => !current)}
+              >
+                Soutenances du jour
+              </button>
+            </div>
+            <div>
+              <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-slate-400 uppercase">
+                Faculté
+              </p>
+              <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                {(
+                  [
+                    ["", "Toutes"],
+                    ["FMDC/FMPC", "FMDC/FMPC"],
+                    ["Autres", "Autres"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`rounded-lg px-2.5 py-2 text-xs font-semibold transition ${facultyFilter === value ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    onClick={() => setFacultyFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {canExport && (
+              <a
+                href="/api/clients/today-pdf"
+                className="icon-action"
+                title="Télécharger le PDF des soutenances du jour"
+                aria-label="Télécharger le PDF des soutenances du jour"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 fill-none stroke-current stroke-[1.8]"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
+                </svg>
+              </a>
+            )}
+          </div>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
+          {canManage && (
+            <button className="btn-primary" onClick={() => setEditing("new")}>
+              Ajouter un client
+            </button>
+          )}
+          <button
+            type="button"
+            className={`icon-action ${showFilters ? "bg-indigo-100" : ""}`}
+            title={showFilters ? "Masquer les filtres" : "Afficher les filtres"}
+            aria-label={
+              showFilters ? "Masquer les filtres" : "Afficher les filtres"
+            }
+            aria-expanded={showFilters}
+            aria-controls="client-filters"
+            onClick={() => setShowFilters((current) => !current)}
+          >
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              className="absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 fill-none stroke-slate-400 stroke-2"
+              className="h-4 w-4 fill-none stroke-current stroke-[1.8]"
+              strokeLinecap="round"
             >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-4-4" />
+              <path d="M4 6h16M7 12h10M10 18h4" />
             </svg>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search clients…"
-              className="field pl-11"
-            />
-          </div>
-          <p className="text-sm text-slate-500">
-            <span className="font-semibold text-slate-800">
-              {clients.length}
-            </span>{" "}
-            {clients.length === 1 ? "client" : "clients"}
-          </p>
+          </button>
         </div>
-
-        {filtered.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                <tr>
-                  <th className="px-6 py-4">Client</th>
-                  <th className="px-6 py-4">Phone</th>
-                  <th className="px-6 py-4">Added</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="transition hover:bg-slate-50/70"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-                          {initials(client.name)}
-                        </span>
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {client.name}
-                          </p>
-                          <a
-                            href={`mailto:${client.email}`}
-                            className="text-slate-500 hover:text-indigo-600"
-                          >
-                            {client.email}
-                          </a>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {client.phone ? (
-                        <a
-                          href={`tel:${client.phone}`}
-                          className="hover:text-indigo-600"
-                        >
-                          {client.phone}
-                        </a>
-                      ) : (
-                        <span className="text-slate-400">Not provided</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-slate-500">
-                      {new Intl.DateTimeFormat("en", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      }).format(new Date(client.createdAt))}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        {canManage ? (
-                          <>
-                            <button
-                              onClick={() => setEditing(client)}
-                              className="action-button"
-                            >
-                              Edit
-                            </button>
-                            <form
-                              action={async (data) => {
-                                try {
-                                  await deleteClient(data);
-                                  toast.success("Client deleted successfully.");
-                                } catch {
-                                  toast.error("Could not delete the client.");
-                                }
-                              }}
-                              onSubmit={(event) => {
-                                if (
-                                  !window.confirm(
-                                    `Delete ${client.name}? This cannot be undone.`,
-                                  )
-                                )
-                                  event.preventDefault();
-                              }}
-                            >
-                              <input
-                                type="hidden"
-                                name="id"
-                                value={client.id}
-                              />
-                              <button className="action-button text-red-600 hover:border-red-200 hover:bg-red-50">
-                                Delete
-                              </button>
-                            </form>
-                          </>
-                        ) : (
-                          <span className="text-xs text-slate-400">
-                            View only
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="px-6 py-16 text-center">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-xl">
-              {clients.length ? "⌕" : "👤"}
-            </div>
-            <h2 className="mt-4 font-semibold text-slate-900">
-              {clients.length ? "No matching clients" : "No clients yet"}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {clients.length
-                ? "Try a different search term."
-                : "Add your first client to get started."}
-            </p>
-            {!clients.length && canManage && (
-              <button
-                onClick={() => setEditing("new")}
-                className="btn-primary mt-5"
-              >
-                Add client
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
-      {editing && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) close();
-          }}
+          id="client-filters"
+          hidden={!showFilters}
+          className="mt-4 space-y-4 border-t border-slate-100 pt-4"
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="client-dialog-title"
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h2
-                  id="client-dialog-title"
-                  className="text-xl font-bold text-slate-950"
-                >
-                  {editing === "new" ? "Add a new client" : "Edit client"}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {editing === "new"
-                    ? "Enter their contact information below."
-                    : "Update their contact information."}
-                </p>
-              </div>
-              <button
-                onClick={close}
-                aria-label="Close"
-                className="grid h-9 w-9 place-items-center rounded-full text-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          <fieldset>
+            <legend className="mb-2 text-xs font-semibold text-slate-500">
+              Statut
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              <label
+                className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${!status ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
               >
-                ×
-              </button>
+                <input
+                  className="sr-only"
+                  type="radio"
+                  name="status-filter"
+                  checked={!status}
+                  onChange={() => setStatus("")}
+                />
+                Tous
+              </label>
+              {projectStatuses.map((value) => (
+                <label
+                  key={value}
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${status === value ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
+                >
+                  <input
+                    className="sr-only"
+                    type="radio"
+                    name="status-filter"
+                    checked={status === value}
+                    onChange={() => setStatus(value)}
+                  />
+                  {value}
+                </label>
+              ))}
             </div>
-            <ClientForm
-              key={editing === "new" ? "new" : editing.id}
-              client={editing === "new" ? undefined : editing}
-              onDone={close}
-              onCancel={close}
-            />
+          </fieldset>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <label className="text-xs font-semibold text-slate-500">
+              Pack
+              <select
+                className="field mt-2"
+                value={pack}
+                onChange={(e) => setPack(e.target.value)}
+              >
+                <option value="">Tous les packs</option>
+                {packOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
+              Photographe
+              <select
+                className="field mt-2"
+                value={photographer}
+                onChange={(e) => setPhotographer(e.target.value)}
+              >
+                <option value="">Tous les photographes</option>
+                <option value="none">Non affecté</option>
+                {catalog.photographers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
+              Soutenance du
+              <input
+                type="date"
+                className="field mt-2"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </label>
+            <label className="text-xs font-semibold text-slate-500">
+              Au
+              <input
+                type="date"
+                className="field mt-2"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </label>
           </div>
         </div>
+      </div>
+      <div className="mb-3 flex items-center justify-between">
+        <p role="status" className="text-sm text-slate-500">
+          {filtered.length} client(s) sur {clients.length}
+        </p>
+        {(query ||
+          status ||
+          pack ||
+          photographer ||
+          from ||
+          to ||
+          todayOnly ||
+          facultyFilter) && (
+          <button
+            className="action-button"
+            onClick={() => {
+              setQuery("");
+              setStatus("");
+              setPack("");
+              setPhotographer("");
+              setFrom("");
+              setTo("");
+              setTodayOnly(false);
+              setFacultyFilter("");
+            }}
+          >
+            Réinitialiser les filtres
+          </button>
+        )}
+      </div>
+      {notice && (
+        <p role="status" className="mb-3 text-sm text-emerald-700">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+      <div className="client-list overflow-x-auto rounded-2xl border border-indigo-100 bg-white shadow-[0_8px_30px_rgba(79,70,229,0.06)]">
+        <table className="studio-table w-full text-left text-sm">
+          <caption className="sr-only">Liste des clients</caption>
+          <thead className="border-b border-indigo-100 bg-indigo-50/80 text-indigo-800">
+            <tr>
+              {[
+                "Client",
+                "Soutenance",
+                "Prestation",
+                "Suppléments",
+                "Photographe",
+
+                "Total",
+                "Actions",
+              ].map((label) => (
+                <th scope="col" key={label} className="px-4 py-3">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c) => (
+              <tr key={c.id} className="border-b border-slate-100">
+                <td className="px-4">
+                  <p className="max-w-44 truncate font-bold" title={c.name}>
+                    {c.name}
+                  </p>
+                  {c.phone && (
+                    <a
+                      className="mt-1 block text-xs text-slate-500"
+                      href={`tel:${c.phone}`}
+                    >
+                      {c.phone}
+                    </a>
+                  )}
+                </td>
+                <td className="px-4 whitespace-nowrap">
+                  {dateLabel(c.defenseDate)}
+                </td>
+                <td className="px-4">
+                  <p
+                    className="max-w-32 truncate font-semibold"
+                    title={c.packName ?? "À renseigner"}
+                  >
+                    {c.packName ?? "À renseigner"}
+                  </p>
+                  <p
+                    className="mt-1 max-w-36 truncate text-xs text-slate-500"
+                    title={`${c.facultyName ?? "—"} · ${c.isDuo ? "Binôme" : "Solo"}`}
+                  >
+                    {c.facultyName ?? "—"} · {c.isDuo ? "Binôme" : "Solo"}
+                  </p>
+                </td>
+                <td className="px-4">
+                  {c.supplements.length > 0 ? (
+                    <span
+                      className="block max-w-36 truncate text-xs font-semibold text-indigo-600"
+                      title={c.supplements
+                        .map((supplement) => supplement.name)
+                        .join(", ")}
+                    >
+                      {c.supplements
+                        .map((supplement) => supplement.name)
+                        .join(", ")}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">Aucun</span>
+                  )}
+                </td>
+                <td className="px-4">
+                  {canManage ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        aria-label={`Photographe de ${c.name}`}
+                        disabled={updating}
+                        value={c.photographerId ?? ""}
+                        onChange={(event) =>
+                          quickUpdate(c, "photographerId", event.target.value)
+                        }
+                        className="table-select photographer-select"
+                      >
+                        <option value="">Non affecté</option>
+                        {catalog.photographers
+                          .filter(
+                            (p) => p.isActive || p.id === c.photographerId,
+                          )
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </select>
+                      {photographerWhatsAppUrl(c) && (
+                        <a
+                          href={photographerWhatsAppUrl(c)!}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="icon-action bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100"
+                          title="Envoyer les informations au photographe"
+                          aria-label={`Envoyer les informations de ${c.name} au photographe`}
+                        >
+                          <ActionIcon name="whatsapp" />
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    person(c.photographerId)
+                  )}
+                </td>
+
+                <td className="px-4 font-bold whitespace-nowrap tabular-nums">
+                  <p>{formatDh(c.total)}</p>
+                  <p
+                    className={`mt-1 text-xs ${Number(c.advance) >= Number(c.total) ? "text-emerald-600" : "text-amber-600"}`}
+                  >
+                    {Number(c.advance) >= Number(c.total)
+                      ? "Soldé"
+                      : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
+                  </p>
+                </td>
+                <td className="px-4">
+                  <div className="flex gap-1">
+                    {whatsappUrl(c.phone) && (
+                      <a
+                        className="icon-action bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100"
+                        href={whatsappUrl(c.phone)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Ouvrir WhatsApp"
+                        aria-label={`Ouvrir WhatsApp pour ${c.name}`}
+                      >
+                        <ActionIcon name="whatsapp" />
+                      </a>
+                    )}
+                    <button
+                      className="icon-action"
+                      title={canManage ? "Modifier" : "Consulter"}
+                      aria-label={`${canManage ? "Modifier" : "Consulter"} ${c.name}`}
+                      onClick={() => setEditing(c)}
+                      aria-haspopup="dialog"
+                    >
+                      <ActionIcon name={canManage ? "edit" : "view"} />
+                    </button>
+                    {canManage && (
+                      <button
+                        className="icon-action icon-action-danger"
+                        title="Supprimer"
+                        aria-label={`Supprimer ${c.name}`}
+                        disabled={deleting !== null}
+                        onClick={() => remove(c)}
+                      >
+                        <ActionIcon
+                          name={deleting === c.id ? "loading" : "delete"}
+                        />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!filtered.length && (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-slate-500">
+                  {clients.length
+                    ? "Aucun client ne correspond aux filtres."
+                    : "Aucun client enregistré."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {editing && (
+        <SettingsDrawer
+          wide
+          title={editing === "new" ? "Ajouter un client" : editing.name}
+          onClose={() => setEditing(null)}
+        >
+          {canManage ? (
+            <ClientForm
+              client={editing === "new" ? undefined : editing}
+              catalog={catalog}
+              onDone={() => setEditing(null)}
+            />
+          ) : (
+            editing !== "new" && (
+              <dl className="space-y-4">
+                {Object.entries({
+                  "Nom complet": editing.name,
+                  Téléphone: editing.phone,
+                  "E-mail": editing.email,
+                  Soutenance: dateLabel(editing.defenseDate),
+                  Pack: editing.packName,
+                  Faculté: editing.facultyName,
+                  Binôme: editing.isDuo ? "Oui" : "Non",
+                  Suppléments: editing.supplements
+                    .map((s) => `${s.name} (${formatDh(s.price)})`)
+                    .join(", "),
+                  "Total à payer": formatDh(editing.total),
+                  "Avance versée": formatDh(editing.advance),
+                  "Reste à payer": formatDh(
+                    remainingPrice(editing.total, editing.advance),
+                  ),
+                  Réduction: formatDh(editing.discount),
+                  Photographe: person(editing.photographerId),
+                  Monteur: catalog.editors.find(
+                    (p) => p.id === editing.editorId,
+                  )?.name,
+                  Statut: editing.status,
+                  Commentaire: editing.comment,
+                  "Gain brut": editing.grossProfit
+                    ? formatDh(editing.grossProfit)
+                    : "—",
+                }).map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-xs text-slate-500">{label}</dt>
+                    <dd className="mt-1 text-sm whitespace-pre-wrap">
+                      {value || "—"}
+                    </dd>
+                  </div>
+                ))}
+                {editing.driveUrl && (
+                  <div>
+                    <dt className="text-xs text-slate-500">Lien Drive</dt>
+                    <dd>
+                      <a
+                        href={editing.driveUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-indigo-600"
+                      >
+                        Ouvrir le dossier Drive ↗
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )
+          )}
+        </SettingsDrawer>
       )}
     </>
   );
