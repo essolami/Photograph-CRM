@@ -53,12 +53,24 @@ export async function createUser(
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    console.error("Create user failed:", message);
-    if (message.includes("role") && message.includes("column"))
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+    console.error("Create user failed:", error);
+    if (
+      code === "P2022" ||
+      /column.*role|role.*column|does not exist/i.test(message)
+    )
       return { error: "La base de données n’est pas à jour. Exécutez npx prisma migrate deploy." };
-    if (message.includes("Unique constraint") || message.includes("unique"))
+    if (
+      code === "P2002" ||
+      /unique constraint|duplicate key|already exists/i.test(message)
+    )
       return { error: "Cette adresse e-mail existe déjà." };
+    if (code === "P1001" || code === "P1002" || /timeout|timed out|connect/i.test(message))
+      return { error: "La base de données est momentanément inaccessible. Réessayez dans quelques secondes." };
     return { error: "Impossible de créer ce compte. Consultez les logs du serveur." };
   }
 }

@@ -521,9 +521,11 @@ export function ClientManager({
                   {canViewPrivate ? (
                     <>
                       <p>{formatDh(c.total)}</p>
-                      <p className={`mt-1 text-xs ${Number(c.advance) >= Number(c.total) ? "text-emerald-600" : "text-amber-600"}`}>
-                        {Number(c.advance) >= Number(c.total) ? "Soldé" : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
-                      </p>
+                      {c.total.trim() && c.advance.trim() ? (
+                        <p className={`mt-1 text-xs ${Number(c.advance) >= Number(c.total) ? "text-emerald-600" : "text-amber-600"}`}>
+                          {Number(c.advance) >= Number(c.total) ? "Soldé" : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
+                        </p>
+                      ) : null}
                     </>
                   ) : <span className="text-slate-400">—</span>}
                 </td>
@@ -606,7 +608,9 @@ export function ClientManager({
                 : "Aucun",
               "Total à payer": canViewPrivate ? formatDh(viewing.total) : null,
               "Avance versée": canViewPrivate ? formatDh(viewing.advance) : null,
-              "Reste à payer": canViewPrivate ? formatDh(remainingPrice(viewing.total, viewing.advance)) : null,
+              "Reste à payer": canViewPrivate && viewing.total.trim() && viewing.advance.trim()
+                ? formatDh(remainingPrice(viewing.total, viewing.advance))
+                : null,
               Réduction: canViewPrivate ? formatDh(viewing.discount) : null,
               Photographe: person(viewing.photographerId),
               Monteur: catalog.editors.find((p) => p.id === viewing.editorId)?.name,
@@ -670,9 +674,9 @@ export function ClientManager({
                     .join(", "),
                   "Total à payer": formatDh(editing.total),
                   "Avance versée": formatDh(editing.advance),
-                  "Reste à payer": formatDh(
-                    remainingPrice(editing.total, editing.advance),
-                  ),
+                  "Reste à payer": editing.total.trim() && editing.advance.trim()
+                    ? formatDh(remainingPrice(editing.total, editing.advance))
+                    : null,
                   Réduction: formatDh(editing.discount),
                   Photographe: person(editing.photographerId),
                   Monteur: catalog.editors.find(

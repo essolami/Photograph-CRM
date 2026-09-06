@@ -10,13 +10,15 @@ type SidebarUser = {
   name: string;
   email: string;
   canViewClients: boolean;
+  canManageClients: boolean;
   canViewInvoices: boolean;
   canManageUsers: boolean;
 };
 
 const navItems = [
-  { label: "Tableau de bord", icon: "dashboard" },
-  { label: "Clients", icon: "clients", active: true },
+  { label: "Tableau de bord", icon: "dashboard", href: "/dashboard" },
+  { label: "Toges", icon: "toges", href: "/toges" },
+  { label: "Clients", icon: "clients", href: "/" },
 ];
 
 function Icon({ name }: { name: string }) {
@@ -101,15 +103,24 @@ export function Sidebar({
   activePage = "clients",
 }: {
   user: SidebarUser;
-  activePage?: "clients" | "settings" | "admin";
+  activePage?: "dashboard" | "clients" | "toges" | "settings" | "admin";
 }) {
   const pathname = usePathname();
   const currentPage = pathname.startsWith("/admin")
     ? "admin"
-    : pathname.startsWith("/parametres")
-      ? "settings"
-      : activePage;
+    : pathname.startsWith("/dashboard")
+      ? "dashboard"
+      : pathname.startsWith("/toges")
+        ? "toges"
+      : pathname.startsWith("/parametres")
+        ? "settings"
+        : activePage;
   const visibleItems = navItems
+    .filter(
+      (item) =>
+        (item.icon !== "dashboard" && item.icon !== "toges") ||
+        user.canManageClients,
+    )
     .filter((item) => item.label !== "Clients" || user.canViewClients)
     .filter((item) => item.label !== "Factures" || user.canViewInvoices);
   return (
@@ -125,11 +136,15 @@ export function Sidebar({
           {visibleItems.map((item) => (
             <Link
               key={item.label}
-              href={item.active ? "/" : "#"}
+              href={item.href}
               aria-current={
-                item.active && currentPage === "clients" ? "page" : undefined
+                (item.icon === "clients" && currentPage === "clients") ||
+                (item.icon === "toges" && pathname.startsWith("/toges")) ||
+                (item.icon === "dashboard" && currentPage === "dashboard")
+                  ? "page"
+                  : undefined
               }
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${item.active && currentPage === "clients" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${(item.icon === "clients" && currentPage === "clients") || (item.icon === "toges" && pathname.startsWith("/toges")) || (item.icon === "dashboard" && currentPage === "dashboard") ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
             >
               <Icon name={item.icon} />
               {item.label}

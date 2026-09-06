@@ -36,6 +36,24 @@ model Client {
   updatedAt DateTime @updatedAt
 }
 
+model TogeSale {
+  id           Int      @id @default(autoincrement())
+  customerName String
+  phone        String
+  element      String
+  color        String
+  size         String
+  location     String
+  price        Decimal  @db.Decimal(10, 2)
+  advance      Decimal  @default(0) @db.Decimal(10, 2)
+  isDelivered  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([customerName])
+  @@index([createdAt])
+}
+
 model Faculty {
   rates FacultyPackRate[]
   id        Int      @id @default(autoincrement())
