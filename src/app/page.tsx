@@ -10,29 +10,49 @@ export const dynamic = "force-dynamic";
 
 function ClientListLoading() {
   return (
-    <div className="animate-pulse space-y-8">
-      <div className="h-10 w-48 rounded-lg bg-slate-200" />
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap gap-3">
-          <div className="h-10 min-w-64 flex-1 rounded-lg bg-slate-100" />
-          <div className="h-10 w-36 rounded-lg bg-slate-100" />
-          <div className="h-10 w-32 rounded-lg bg-slate-100" />
+    <div>
+      <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-indigo-500 uppercase">
+        Gestion du studio
+      </p>
+      <h1 className="text-3xl font-bold sm:text-4xl">Clients</h1>
+      <p className="mt-3 mb-8 text-sm text-slate-500">
+        Retrouvez vos soutenances, vos prestations et l’avancement de chaque dossier.
+      </p>
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="h-10 min-w-64 flex-1 rounded-lg border border-slate-200 bg-white" />
+          <div className="h-10 w-36 rounded-xl border border-slate-200 bg-white" />
+          <div className="h-10 w-32 rounded-xl border border-slate-200 bg-white" />
+          <div className="h-10 w-36 rounded-lg bg-indigo-600/20" />
         </div>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid grid-cols-5 gap-4 border-b border-slate-200 bg-indigo-50/70 px-5 py-4">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-4 rounded bg-indigo-100" />
-          ))}
-        </div>
-        {Array.from({ length: 4 }).map((_, row) => (
-          <div key={row} className="grid grid-cols-5 gap-4 border-b border-slate-100 px-5 py-6 last:border-0">
-            {Array.from({ length: 5 }).map((_, column) => (
-              <div key={column} className={`h-5 rounded bg-slate-100 ${column === 0 ? "w-3/4" : "w-1/2"}`} />
+      <div className="mb-3 h-5 w-32 rounded bg-slate-100" />
+      <div className="overflow-x-auto rounded-2xl border border-indigo-100 bg-white shadow-[0_8px_30px_rgba(79,70,229,0.06)]">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-indigo-100 bg-indigo-50/80">
+            <tr>
+              {Array.from({ length: 7 }).map((_, index) => (
+                <th key={index} className="px-4 py-3">
+                  <div className="h-4 w-20 animate-pulse rounded bg-indigo-100" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 4 }).map((_, row) => (
+              <tr key={row} className="border-b border-slate-100">
+                {Array.from({ length: 7 }).map((_, column) => (
+                  <td key={column} className="px-4 py-6">
+                    <div className={`h-5 animate-pulse rounded bg-slate-100 ${column === 0 ? "w-32" : "w-20"}`} />
+                  </td>
+                ))}
+              </tr>
             ))}
-          </div>
-        ))}
+          </tbody>
+        </table>
       </div>
+      {/* Keep the loading state inside the table while Neon responds. */}
+      <div className="sr-only" aria-live="polite">Chargement des clients…</div>
     </div>
   );
 }

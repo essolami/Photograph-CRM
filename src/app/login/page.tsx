@@ -22,15 +22,13 @@ export default async function LoginPage() {
             Clients, bookings, projects and invoices in one secure workspace.
           </p>
         </div>
-        <p className="text-sm text-slate-600">© 2026 LumaCRM</p>
+        <p className="text-sm text-slate-600">© 2026 Graduation</p>
         <div className="absolute top-1/3 -right-32 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
       </section>
       <section className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="mb-10 lg:hidden">
-            <span className="text-xl font-bold text-slate-950">
-              Luma<span className="text-indigo-600">CRM</span>
-            </span>
+            <span className="text-xl font-bold text-slate-950">Graduation</span>
           </div>
           <p className="text-sm font-semibold text-indigo-600">WELCOME BACK</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">

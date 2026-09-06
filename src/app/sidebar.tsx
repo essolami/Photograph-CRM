@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SettingsNav } from "./parametres/settings-nav";
 import { logout } from "./auth-actions";
 
@@ -65,35 +66,21 @@ export function Brand({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-indigo-600 shadow-lg shadow-indigo-950/20">
-        <svg viewBox="0 0 40 40" className="h-10 w-10" aria-hidden="true">
-          <circle
-            cx="20"
-            cy="20"
-            r="8"
-            fill="none"
-            stroke="white"
-            strokeWidth="3"
-          />
-          <circle cx="20" cy="20" r="3" fill="#a5b4fc" />
-          <path
-            d="M6 15h7l3-4h8l3 4h7v17H6Z"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
-        </svg>
+      <span className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-black shadow-lg shadow-indigo-950/20">
+        <Image
+          src="/Graduation-logo.jpg"
+          alt="Graduation.ma"
+          fill
+          sizes="44px"
+          className="object-cover"
+        />
       </span>
       {!compact && (
         <span>
           <span
             className={`block text-lg font-extrabold tracking-tight ${dark ? "text-white" : "text-slate-950"}`}
           >
-            Luma
-            <span className={dark ? "text-indigo-300" : "text-indigo-600"}>
-              CRM
-            </span>
+            Graduation
           </span>
           <span
             className={`block text-[10px] font-semibold tracking-[0.2em] uppercase ${dark ? "text-indigo-200/70" : "text-slate-500"}`}
@@ -127,9 +114,10 @@ export function Sidebar({
         </p>
         <div className="space-y-1">
           {visibleItems.map((item) => (
-            <a
+            <Link
               key={item.label}
               href={item.active ? "/" : "#"}
+              prefetch={false}
               aria-current={
                 item.active && activePage === "clients" ? "page" : undefined
               }
@@ -137,7 +125,7 @@ export function Sidebar({
             >
               <Icon name={item.icon} />
               {item.label}
-            </a>
+            </Link>
           ))}
         </div>
         {user.canManageUsers && (
@@ -149,13 +137,14 @@ export function Sidebar({
           </>
         )}
         {user.canManageUsers && (
-          <a
+          <Link
             href="/admin"
+            prefetch={false}
             aria-current={activePage === "admin" ? "page" : undefined}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${activePage === "admin" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
           >
             <Icon name="clients" /> Utilisateurs et accès
-          </a>
+          </Link>
         )}
       </nav>
       <div className="mt-8 border-t border-white/10 pt-5">

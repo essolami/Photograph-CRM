@@ -11,15 +11,10 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not configured");
 }
 
-// A regenerated Prisma client must replace the instance cached by hot reload.
-const cached = globalForPrisma.prismaClientPaymentsV2;
+// Reuse the client between requests. This is important on Vercel/Neon because
+// creating a new Prisma client for every navigation adds connection latency.
 export const prisma =
-  cached instanceof PrismaClient
-    ? cached
-    : new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  globalForPrisma.prismaClientPaymentsV2 ??
+  new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
-if (cached && cached !== prisma) void cached.$disconnect().catch(() => {});
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaClientPaymentsV2 = prisma;
-}
+globalForPrisma.prismaClientPaymentsV2 = prisma;

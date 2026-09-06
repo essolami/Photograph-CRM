@@ -4,8 +4,13 @@ import "./globals.css";
 import { ToastProvider } from "./toast";
 
 export const metadata: Metadata = {
-  title: "Luma — Gestion de studio",
+  title: "Graduation — Gestion de studio",
   description: "Votre espace de gestion pour un studio photo organisé.",
+  icons: {
+    icon: "/Graduation-logo.png",
+    shortcut: "/Graduation-logo.png",
+    apple: "/Graduation-logo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
