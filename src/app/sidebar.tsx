@@ -13,9 +13,6 @@ type SidebarUser = {
 const navItems = [
   { label: "Tableau de bord", icon: "dashboard" },
   { label: "Clients", icon: "clients", active: true },
-  { label: "Réservations", icon: "calendar" },
-  { label: "Projets", icon: "camera" },
-  { label: "Factures", icon: "invoice" },
 ];
 
 function Icon({ name }: { name: string }) {

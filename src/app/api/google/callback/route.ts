@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const store = await cookies();
   if (!state || state !== store.get("google_calendar_state")?.value || !code)
-    redirect("/parametres/packs?calendar=error");
+    redirect("/admin?calendar=error");
   let email = "";
   try {
     const auth = googleOAuthClient();
@@ -55,9 +55,9 @@ export async function GET(request: Request) {
     store.delete("google_calendar_state");
   } catch (error) {
     console.error("Google Calendar callback failed", error);
-    redirect("/parametres/packs?calendar=error");
+    redirect("/admin?calendar=error");
   }
   redirect(
-    `/parametres/packs?calendar=connected&email=${encodeURIComponent(email)}`,
+    `/admin?calendar=connected&email=${encodeURIComponent(email)}`,
   );
 }

@@ -20,5 +20,5 @@ export async function GET() {
       );
     }
   }
-  redirect(`/parametres/packs?calendar=synced&count=${synced}`);
+  redirect(`/admin?calendar=synced&count=${synced}`);
 }

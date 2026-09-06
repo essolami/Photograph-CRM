@@ -1,22 +1,26 @@
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { sections, type Section } from "../config";
 import { SettingsTable } from "../settings-table";
-export default async function SettingsSection({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ section: string }>;
-  searchParams: Promise<{ calendar?: string; count?: string }>;
-}) {
-  await requirePermission("canManageUsers");
-  const { section: key } = await params;
-  const query = await searchParams;
-  if (key === "tarifs" || key === "facultes") redirect("/parametres/packs");
-  if (!Object.hasOwn(sections, key)) notFound();
-  const section = key as Section;
-  const config = sections[section];
+
+function SettingsTableLoading() {
+  return (
+    <div className="animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="h-14 border-b border-slate-200 bg-indigo-50/70" />
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="flex gap-6 border-b border-slate-100 p-5 last:border-0">
+          <div className="h-5 w-1/3 rounded bg-slate-100" />
+          <div className="h-5 w-1/4 rounded bg-slate-100" />
+          <div className="ml-auto h-8 w-20 rounded-lg bg-slate-100" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function SettingsData({ section }: { section: Section }) {
   const rates =
     section === "packs"
       ? await prisma.facultyPackRate.findMany({
@@ -41,6 +45,34 @@ export default async function SettingsSection({
       : section === "photographes"
         ? prisma.photographer.findMany({ orderBy: { id: "asc" } })
         : prisma.editor.findMany({ orderBy: { id: "asc" } }));
+
+  return (
+    <SettingsTable
+      section={section}
+      newPriceRows={priceRows()}
+      records={records.map((r) => ({
+        id: r.id,
+        name: r.name,
+        phone: "phone" in r && typeof r.phone === "string" ? r.phone : null,
+        isActive: r.isActive,
+        price: "price" in r ? String(r.price) : undefined,
+        priceRows: priceRows(r.id),
+      }))}
+    />
+  );
+}
+
+export default async function SettingsSection({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}) {
+  await requirePermission("canManageUsers");
+  const { section: key } = await params;
+  if (key === "tarifs" || key === "facultes") redirect("/parametres/packs");
+  if (!Object.hasOwn(sections, key)) notFound();
+  const section = key as Section;
+  const config = sections[section];
   return (
     <section>
       <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-indigo-500 uppercase">
@@ -52,53 +84,9 @@ export default async function SettingsSection({
       <p className="mt-3 mb-8 max-w-2xl text-sm leading-6 text-slate-500">
         {config.description}
       </p>
-      {query.calendar === "not-configured" && (
-        <p
-          role="alert"
-          className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800"
-        >
-          Google Calendar n’est pas configuré. Ajoutez GOOGLE_CLIENT_ID et
-          GOOGLE_CLIENT_SECRET dans le fichier .env, puis redémarrez le serveur.
-        </p>
-      )}
-      {query.calendar === "error" && (
-        <p
-          role="alert"
-          className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
-        >
-          La connexion Google Calendar a échoué. Vérifiez les identifiants OAuth
-          et l’URI de redirection.
-        </p>
-      )}
-      {query.calendar === "connected" && (
-        <p
-          role="status"
-          className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
-        >
-          Google Calendar est connecté.
-        </p>
-      )}
-      {query.calendar === "synced" && (
-        <p
-          role="status"
-          className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
-        >
-          {query.count ?? "0"} client(s) synchronisé(s) avec Google Calendar.
-        </p>
-      )}
-      <SettingsTable
-        key={section}
-        section={section}
-        newPriceRows={priceRows()}
-        records={records.map((r) => ({
-          id: r.id,
-          name: r.name,
-          phone: "phone" in r && typeof r.phone === "string" ? r.phone : null,
-          isActive: r.isActive,
-          price: "price" in r ? String(r.price) : undefined,
-          priceRows: priceRows(r.id),
-        }))}
-      />
+      <Suspense fallback={<SettingsTableLoading />}>
+        <SettingsData section={section} />
+      </Suspense>
     </section>
   );
 }

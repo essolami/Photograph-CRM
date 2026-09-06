@@ -19,7 +19,7 @@ export async function GET() {
     authorizationUrl = googleAuthorizationUrl(state);
   } catch (error) {
     console.error("Google Calendar connection is not configured", error);
-    redirect("/parametres/packs?calendar=not-configured");
+    redirect("/admin?calendar=not-configured");
   }
   redirect(authorizationUrl!);
 }
