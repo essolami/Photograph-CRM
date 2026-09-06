@@ -3,7 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ActionIcon } from "./action-icon";
 import { deleteClient, updateClientQuick } from "./actions";
-import { ClientForm } from "./client-form";
+import { ClientForm, DriveLinkForm } from "./client-form";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
   formatDh,
@@ -22,11 +22,15 @@ export function ClientManager({
   clients,
   catalog,
   canManage,
+  canEditDrive,
+  canViewPrivate,
   canExport,
 }: {
   clients: ClientRecord[];
   catalog: ClientCatalog;
   canManage: boolean;
+  canEditDrive: boolean;
+  canViewPrivate: boolean;
   canExport: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -428,7 +432,7 @@ export function ClientManager({
                   <p className="max-w-44 truncate font-bold" title={c.name}>
                     {c.name}
                   </p>
-                  {c.phone && (
+                  {canViewPrivate && c.phone && (
                     <a
                       className="mt-1 block text-xs text-slate-500"
                       href={`tel:${c.phone}`}
@@ -514,18 +518,18 @@ export function ClientManager({
                 </td>
 
                 <td className="px-4 font-bold whitespace-nowrap tabular-nums">
-                  <p>{formatDh(c.total)}</p>
-                  <p
-                    className={`mt-1 text-xs ${Number(c.advance) >= Number(c.total) ? "text-emerald-600" : "text-amber-600"}`}
-                  >
-                    {Number(c.advance) >= Number(c.total)
-                      ? "Soldé"
-                      : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
-                  </p>
+                  {canViewPrivate ? (
+                    <>
+                      <p>{formatDh(c.total)}</p>
+                      <p className={`mt-1 text-xs ${Number(c.advance) >= Number(c.total) ? "text-emerald-600" : "text-amber-600"}`}>
+                        {Number(c.advance) >= Number(c.total) ? "Soldé" : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
+                      </p>
+                    </>
+                  ) : <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   <div className="flex gap-1">
-                    {whatsappUrl(c.phone) && (
+                    {canViewPrivate && whatsappUrl(c.phone) && (
                       <a
                         className="icon-action bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100"
                         href={whatsappUrl(c.phone)!}
@@ -540,15 +544,15 @@ export function ClientManager({
                     )}
                     <button
                       className="icon-action"
-                      title={canManage ? "Modifier" : "Consulter"}
-                      aria-label={`${canManage ? "Modifier" : "Consulter"} ${c.name}`}
+                      title={canManage ? "Modifier" : canEditDrive ? "Modifier le lien Drive" : "Consulter"}
+                      aria-label={`${canManage ? "Modifier" : canEditDrive ? "Modifier le lien Drive" : "Consulter"} ${c.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setEditing(c);
                       }}
                       aria-haspopup="dialog"
                     >
-                      <ActionIcon name={canManage ? "edit" : "view"} />
+                      <ActionIcon name={canManage || canEditDrive ? "edit" : "view"} />
                     </button>
                     {canManage && (
                       <button
@@ -584,26 +588,15 @@ export function ClientManager({
       </div>
       {viewing && (
         <SettingsDrawer
-          wide
+          compact
           title={viewing.name}
           onClose={() => setViewing(null)}
         >
-          <div className="mb-6 rounded-2xl bg-indigo-50 px-5 py-4">
-            <p className="text-xs font-bold tracking-[0.14em] text-indigo-500 uppercase">
-              Détails de la soutenance
-            </p>
-            <p className="mt-2 text-lg font-extrabold text-indigo-950">
-              {dateLabel(viewing.defenseDate)}
-            </p>
-            <p className="mt-1 text-sm text-indigo-700">
-              {viewing.packName || "Pack non renseigné"} · {viewing.facultyName || "Faculté non renseignée"}
-            </p>
-          </div>
-          <dl className="grid gap-4 sm:grid-cols-2">
+          <dl className="grid gap-x-5 gap-y-0 sm:grid-cols-2">
             {Object.entries({
               "Nom complet": viewing.name,
-              Téléphone: viewing.phone,
-              "E-mail": viewing.email,
+              Téléphone: canViewPrivate ? viewing.phone : null,
+              "E-mail": canViewPrivate ? viewing.email : null,
               Soutenance: dateLabel(viewing.defenseDate),
               Pack: viewing.packName,
               Faculté: viewing.facultyName,
@@ -611,20 +604,23 @@ export function ClientManager({
               Suppléments: viewing.supplements.length
                 ? viewing.supplements.map((s) => `${s.name} (${formatDh(s.price)})`).join(", ")
                 : "Aucun",
-              "Total à payer": formatDh(viewing.total),
-              "Avance versée": formatDh(viewing.advance),
-              "Reste à payer": formatDh(remainingPrice(viewing.total, viewing.advance)),
-              Réduction: formatDh(viewing.discount),
+              "Total à payer": canViewPrivate ? formatDh(viewing.total) : null,
+              "Avance versée": canViewPrivate ? formatDh(viewing.advance) : null,
+              "Reste à payer": canViewPrivate ? formatDh(remainingPrice(viewing.total, viewing.advance)) : null,
+              Réduction: canViewPrivate ? formatDh(viewing.discount) : null,
               Photographe: person(viewing.photographerId),
               Monteur: catalog.editors.find((p) => p.id === viewing.editorId)?.name,
               Statut: viewing.status,
               "Lien Drive": viewing.driveUrl,
               Commentaire: viewing.comment,
-              "Gain brut": viewing.grossProfit ? formatDh(viewing.grossProfit) : "—",
-            }).map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-                <dt className="text-xs font-semibold text-slate-500">{label}</dt>
-                <dd className="mt-1 text-sm font-semibold whitespace-pre-wrap text-slate-900">
+              "Gain brut": canViewPrivate && viewing.grossProfit ? formatDh(viewing.grossProfit) : null,
+            }).filter(([label]) => canViewPrivate || !["Téléphone", "E-mail", "Total à payer", "Avance versée", "Reste à payer", "Réduction", "Gain brut"].includes(label)).map(([label, value]) => (
+              <div
+                key={label}
+                className={`flex min-h-10 items-baseline justify-between gap-3 border-b border-slate-100 py-2 ${label === "Suppléments" || label === "Commentaire" ? "sm:col-span-2 flex-col items-start gap-1" : ""}`}
+              >
+                <dt className="shrink-0 text-[11px] font-semibold text-slate-500">{label}</dt>
+                <dd className={`min-w-0 text-sm font-semibold break-words whitespace-pre-wrap text-slate-900 ${label === "Suppléments" || label === "Commentaire" ? "w-full text-left" : "text-right"}`}>
                   {value || "—"}
                 </dd>
               </div>
@@ -633,7 +629,7 @@ export function ClientManager({
           {canManage && (
             <button
               type="button"
-              className="btn-primary mt-6 w-full"
+              className="btn-primary mt-4 w-full"
               onClick={() => {
                 setEditing(viewing);
                 setViewing(null);
@@ -656,6 +652,8 @@ export function ClientManager({
               catalog={catalog}
               onDone={() => setEditing(null)}
             />
+          ) : canEditDrive && editing !== "new" ? (
+            <DriveLinkForm client={editing} onDone={() => setEditing(null)} />
           ) : (
             editing !== "new" && (
               <dl className="space-y-4">

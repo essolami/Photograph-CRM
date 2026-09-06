@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { type SupplementChoice } from "@/lib/client-data";
 import { prisma } from "@/lib/prisma";
 import { ClientManager } from "../client-manager";
-import { requireUser } from "@/lib/auth";
+import { canEditDrive, requireUser, userRole } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -80,19 +80,22 @@ function ClientListLoading() {
 }
 
 async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUser>> }) {
+  const privateData = ["ADMIN", "MANAGER"].includes(userRole(user));
   const [clients, packs, supplements, photographers, editors] =
     await getClientPageData();
   const records = clients.map((c) => ({
     ...c,
+    phone: privateData ? c.phone : null,
+    email: privateData ? c.email : null,
     defenseDate: c.defenseDate
       ? new Date(c.defenseDate).toISOString().slice(0, 10)
       : "",
-    basePrice: c.basePrice.toString(),
+    basePrice: privateData ? c.basePrice.toString() : "",
     supplements: c.supplements as SupplementChoice[],
-    discount: c.discount.toString(),
-    total: c.total.toString(),
-    advance: c.advance.toString(),
-    grossProfit: c.grossProfit?.toString() ?? "",
+    discount: privateData ? c.discount.toString() : "",
+    total: privateData ? c.total.toString() : "",
+    advance: privateData ? c.advance.toString() : "",
+    grossProfit: privateData ? c.grossProfit?.toString() ?? "" : "",
   }));
   const catalog = {
     packs: packs.map((p) => ({
@@ -106,11 +109,11 @@ async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUse
       })),
     })),
     supplements: supplements.map((s) => ({ id: s.id, name: s.name, price: s.price.toString() })),
-    photographers: photographers.map((p) => ({ id: p.id, name: p.name, phone: p.phone, isActive: p.isActive })),
+    photographers: photographers.map((p) => ({ id: p.id, name: p.name, phone: privateData ? p.phone : null, isActive: p.isActive })),
     editors: editors.map((p) => ({ id: p.id, name: p.name, isActive: p.isActive })),
   };
 
-  return <ClientManager clients={records} catalog={catalog} canManage={user.canManageClients} canExport={user.canManageUsers} />;
+  return <ClientManager clients={records} catalog={catalog} canManage={user.canManageClients} canEditDrive={canEditDrive(user)} canViewPrivate={privateData} canExport={user.canManageUsers} />;
 }
 
 export default async function Home() {

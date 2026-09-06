@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState } from "react";
-import { createClient, updateClient } from "./actions";
+import { createClient, updateClient, updateClientDrive } from "./actions";
 import {
   cents,
   formatDh,
@@ -421,6 +421,31 @@ export function ClientForm({
               ? "Enregistrer"
               : "Ajouter le client"}
         </button>
+      </div>
+    </form>
+  );
+}
+
+export function DriveLinkForm({
+  client,
+  onDone,
+}: {
+  client: ClientRecord;
+  onDone: () => void;
+}) {
+  const [state, action, pending] = useActionState(updateClientDrive, {});
+  return (
+    <form action={action} className="space-y-5">
+      <input type="hidden" name="id" value={client.id} />
+      <div>
+        <p className="text-sm font-semibold text-slate-800">Lien Google Drive</p>
+        <p className="mt-1 text-xs text-slate-500">Ajoutez le lien du montage terminé.</p>
+        <input className="field mt-2" name="driveUrl" type="url" defaultValue={client.driveUrl ?? ""} placeholder="https://drive.google.com/..." />
+      </div>
+      {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
+      <div className="flex justify-end gap-3">
+        <button type="button" className="btn-secondary" onClick={onDone} disabled={pending}>Annuler</button>
+        <button className="btn-primary" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
       </div>
     </form>
   );

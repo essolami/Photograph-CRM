@@ -1,0 +1,5 @@
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "role" TEXT NOT NULL DEFAULT 'USER';
+
+UPDATE "User"
+SET "role" = 'ADMIN'
+WHERE "canManageUsers" = true;

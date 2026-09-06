@@ -10,19 +10,9 @@ type ManagedUser = {
   name: string;
   email: string;
   isActive: boolean;
-  canViewClients: boolean;
-  canManageClients: boolean;
-  canViewInvoices: boolean;
-  canManageInvoices: boolean;
-  canManageUsers: boolean;
+  role: string;
 };
-const permissions = [
-  ["canViewClients", "Clients: view"],
-  ["canManageClients", "Clients: manage"],
-  ["canViewInvoices", "Invoices: view"],
-  ["canManageInvoices", "Invoices: manage"],
-  ["canManageUsers", "Users: manage"],
-] as const;
+const roles = [["ADMIN", "Administrateur"], ["MANAGER", "Manager"], ["MONTAGE", "Montage"], ["USER", "Utilisateur normal"]] as const;
 
 export function UserAccessForm({
   user,
@@ -62,23 +52,12 @@ export function UserAccessForm({
             <p className="text-sm text-slate-500">{user.email}</p>
           </div>
         </div>
-        <div className="flex flex-1 flex-wrap gap-2">
-          {permissions.map(([name, label]) => (
-            <label
-              key={name}
-              className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"
-            >
-              <input
-                type="checkbox"
-                name={name}
-                defaultChecked={user[name]}
-                disabled={isSelf && name === "canManageUsers"}
-                className="accent-indigo-600"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
+        <label className="flex flex-1 items-center gap-2 text-sm font-semibold text-slate-600">
+          Rôle
+          <select name="role" defaultValue={user.role || "USER"} disabled={isSelf} className="field max-w-52 py-2 text-xs">
+            {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <input
             type="checkbox"

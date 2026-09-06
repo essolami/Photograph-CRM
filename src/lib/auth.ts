@@ -14,6 +14,20 @@ export type Permission =
   | "canManageInvoices"
   | "canManageUsers";
 
+export type UserRole = "ADMIN" | "MANAGER" | "MONTAGE" | "USER";
+
+export function userRole(user: { role?: string; canManageUsers: boolean; canManageClients: boolean }) {
+  if (user.role === "ADMIN" || user.canManageUsers) return "ADMIN" as const;
+  if (user.role === "MANAGER" || user.canManageClients) return "MANAGER" as const;
+  if (user.role === "MONTAGE") return "MONTAGE" as const;
+  return "USER" as const;
+}
+
+export function canEditDrive(user: { role?: string; canManageUsers: boolean; canManageClients: boolean }) {
+  const role = userRole(user);
+  return role === "ADMIN" || role === "MANAGER" || role === "MONTAGE";
+}
+
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }

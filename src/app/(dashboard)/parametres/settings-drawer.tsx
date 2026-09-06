@@ -7,11 +7,13 @@ export function SettingsDrawer({
   onClose,
   children,
   wide = false,
+  compact = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  compact?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -45,13 +47,14 @@ export function SettingsDrawer({
             onClose();
         }
       }}
-      className={`studio-drawer fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full ${wide ? "max-w-3xl" : "max-w-lg"} border-0 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/25 backdrop:backdrop-blur-[3px]`}
+      style={{ maxWidth: wide ? "48rem" : compact ? "36rem" : "32rem" }}
+      className={`studio-drawer fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full ${wide ? "max-w-3xl" : compact ? "max-w-xl" : "max-w-lg"} border-0 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/25 backdrop:backdrop-blur-[3px]`}
     >
       <div className="flex h-full flex-col">
         <header
-          className={`flex shrink-0 items-center justify-between gap-4 border-b px-7 py-6 ${wide ? "border-indigo-800 bg-gradient-to-r from-indigo-950 to-indigo-800 text-white" : "border-slate-100"}`}
+          className={`flex shrink-0 items-center justify-between gap-4 border-b ${compact ? "px-5 py-4" : "px-7 py-6"} ${wide ? "border-indigo-800 bg-gradient-to-r from-indigo-950 to-indigo-800 text-white" : "border-slate-100"}`}
         >
-          <h2 id="drawer-title" className="text-xl font-bold tracking-tight">
+          <h2 id="drawer-title" className={`${compact ? "text-lg" : "text-xl"} font-bold tracking-tight`}>
             {title}
           </h2>
           <button
@@ -63,7 +66,7 @@ export function SettingsDrawer({
             ✕
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-7">{children}</div>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${compact ? "p-5" : "p-7"}`}>{children}</div>
       </div>
     </dialog>
   );

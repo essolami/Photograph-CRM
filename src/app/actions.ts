@@ -242,6 +242,32 @@ export async function updateClientQuick(
     };
   }
 }
+
+export async function updateClientDrive(
+  _state: ClientActionState,
+  data: FormData,
+): Promise<ClientActionState> {
+  const user = await requirePermission("canViewClients");
+  if (user.role !== "MONTAGE" && user.role !== "ADMIN" && user.role !== "MANAGER")
+    return { error: "Vous n’avez pas accès à cette modification." };
+  const id = Number(data.get("id"));
+  const driveUrl = String(data.get("driveUrl") ?? "").trim();
+  if (!Number.isSafeInteger(id) || id < 1)
+    return { error: "Client invalide." };
+  if (driveUrl) {
+    try {
+      const url = new URL(driveUrl);
+      if (url.protocol !== "https:" || !["drive.google.com", "docs.google.com"].includes(url.hostname)) throw new Error();
+    } catch {
+      return { error: "Utilisez un lien Google Drive HTTPS valide." };
+    }
+  }
+  await prisma.client.update({ where: { id }, data: { driveUrl: driveUrl || null } });
+  revalidatePath("/");
+  revalidateTag("clients", "max");
+  return { success: true };
+}
+
 export async function deleteClient(data: FormData) {
   await requirePermission("canManageClients");
   const id = idValue(text(data, "id"))!;

@@ -89,6 +89,7 @@ model User {
   id                Int       @id @default(autoincrement())
   name              String
   email             String    @unique
+  role              String    @default("USER")
   passwordHash      String
   isActive          Boolean   @default(true)
   canViewClients    Boolean   @default(true)

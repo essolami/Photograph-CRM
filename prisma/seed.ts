@@ -36,6 +36,7 @@ async function main() {
       name: "Studio Admin",
       email: adminEmail,
       passwordHash: await hashPassword(adminPassword),
+      role: "ADMIN",
       canViewClients: true,
       canManageClients: true,
       canViewInvoices: true,

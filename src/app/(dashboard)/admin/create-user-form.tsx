@@ -4,13 +4,12 @@ import { useActionState, useEffect, useRef } from "react";
 import { createUser } from "./actions";
 import { useToast } from "../../toast";
 
-const permissions = [
-  ["canViewClients", "View clients"],
-  ["canManageClients", "Create, edit & delete clients"],
-  ["canViewInvoices", "View invoices"],
-  ["canManageInvoices", "Create & edit invoices"],
-  ["canManageUsers", "Manage users & permissions"],
-];
+const roles = [
+  ["ADMIN", "Administrateur", "Accès complet et gestion des comptes"],
+  ["MANAGER", "Manager", "Accès complet aux clients et paramètres"],
+  ["MONTAGE", "Montage", "Consultation et modification du lien Drive"],
+  ["USER", "Utilisateur normal", "Consultation limitée sans téléphone ni montants"],
+] as const;
 
 export function CreateUserForm() {
   const toast = useToast();
@@ -31,7 +30,7 @@ export function CreateUserForm() {
     >
       <h2 className="text-lg font-bold text-slate-950">Create user</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Add a team member and choose their access.
+        Ajoutez un membre et choisissez son rôle.
       </p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label>
@@ -56,22 +55,12 @@ export function CreateUserForm() {
         </label>
       </div>
       <fieldset className="mt-5">
-        <legend className="text-sm font-semibold text-slate-800">
-          Permissions
-        </legend>
+        <legend className="text-sm font-semibold text-slate-800">Rôle</legend>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {permissions.map(([name, label]) => (
-            <label
-              key={name}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
-            >
-              <input
-                type="checkbox"
-                name={name}
-                defaultChecked={name === "canViewClients"}
-                className="h-4 w-4 accent-indigo-600"
-              />
-              {label}
+          {roles.map(([value, label, description]) => (
+            <label key={value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700 has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50">
+              <input type="radio" name="role" value={value} defaultChecked={value === "USER"} className="mt-1 h-4 w-4 accent-indigo-600" />
+              <span><span className="block font-semibold">{label}</span><span className="text-xs text-slate-500">{description}</span></span>
             </label>
           ))}
         </div>
