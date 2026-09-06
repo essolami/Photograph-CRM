@@ -1,9 +1,32 @@
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { sections, type Section } from "../config";
 import { SettingsTable } from "../settings-table";
+
+const getSettingsData = unstable_cache(
+  async (section: Section) => {
+    const rates =
+      section === "packs"
+        ? await prisma.facultyPackRate.findMany({
+            include: { faculty: true },
+            orderBy: { id: "asc" },
+          })
+        : [];
+    const records = await (section === "packs"
+      ? prisma.pack.findMany({ orderBy: { id: "asc" } })
+      : section === "supplements"
+        ? prisma.supplement.findMany({ orderBy: { id: "asc" } })
+        : section === "photographes"
+          ? prisma.photographer.findMany({ orderBy: { id: "asc" } })
+          : prisma.editor.findMany({ orderBy: { id: "asc" } }));
+    return { rates, records };
+  },
+  ["settings-data"],
+  { revalidate: 300, tags: ["settings"] },
+);
 
 function SettingsTableLoading() {
   return (
@@ -21,13 +44,7 @@ function SettingsTableLoading() {
 }
 
 async function SettingsData({ section }: { section: Section }) {
-  const rates =
-    section === "packs"
-      ? await prisma.facultyPackRate.findMany({
-          include: { faculty: true },
-          orderBy: { id: "asc" },
-        })
-      : [];
+  const { rates, records } = await getSettingsData(section);
   const priceRows = (id?: number) =>
     rates
       .filter((rate) => rate.packId === id)
@@ -38,14 +55,6 @@ async function SettingsData({ section }: { section: Section }) {
         soloPrice: rate.soloPrice.toString(),
         duoPrice: rate.duoPrice.toString(),
       }));
-  const records = await (section === "packs"
-    ? prisma.pack.findMany({ orderBy: { id: "asc" } })
-    : section === "supplements"
-      ? prisma.supplement.findMany({ orderBy: { id: "asc" } })
-      : section === "photographes"
-        ? prisma.photographer.findMany({ orderBy: { id: "asc" } })
-        : prisma.editor.findMany({ orderBy: { id: "asc" } }));
-
   return (
     <SettingsTable
       section={section}

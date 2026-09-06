@@ -16,7 +16,6 @@ export function SettingsNav({ mobile = false }: { mobile?: boolean }) {
           <Link
             key={key}
             href={href}
-            prefetch={false}
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition ${active ? "bg-indigo-500 text-white shadow-sm" : mobile ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
           >

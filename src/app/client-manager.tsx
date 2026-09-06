@@ -40,6 +40,7 @@ export function ClientManager({
     "" | "FMDC/FMPC" | "Autres"
   >("");
   const [editing, setEditing] = useState<ClientRecord | "new" | null>(null);
+  const [viewing, setViewing] = useState<ClientRecord | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -413,7 +414,16 @@ export function ClientManager({
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100">
+              <tr
+                key={c.id}
+                className="cursor-pointer border-b border-slate-100 transition hover:bg-indigo-50/40"
+                onClick={() => setViewing(c)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") setViewing(c);
+                }}
+                tabIndex={0}
+                aria-label={`Voir les détails de ${c.name}`}
+              >
                 <td className="px-4">
                   <p className="max-w-44 truncate font-bold" title={c.name}>
                     {c.name}
@@ -422,6 +432,7 @@ export function ClientManager({
                     <a
                       className="mt-1 block text-xs text-slate-500"
                       href={`tel:${c.phone}`}
+                      onClick={(event) => event.stopPropagation()}
                     >
                       {c.phone}
                     </a>
@@ -430,7 +441,7 @@ export function ClientManager({
                 <td className="px-4 whitespace-nowrap">
                   {dateLabel(c.defenseDate)}
                 </td>
-                <td className="px-4">
+                <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   <p
                     className="max-w-32 truncate font-semibold"
                     title={c.packName ?? "À renseigner"}
@@ -444,7 +455,7 @@ export function ClientManager({
                     {c.facultyName ?? "—"} · {c.isDuo ? "Binôme" : "Solo"}
                   </p>
                 </td>
-                <td className="px-4">
+                <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   {c.supplements.length > 0 ? (
                     <span
                       className="block max-w-36 truncate text-xs font-semibold text-indigo-600"
@@ -460,7 +471,7 @@ export function ClientManager({
                     <span className="text-xs text-slate-400">Aucun</span>
                   )}
                 </td>
-                <td className="px-4">
+                <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   {canManage ? (
                     <div className="flex items-center gap-2">
                       <select
@@ -491,6 +502,7 @@ export function ClientManager({
                           className="icon-action bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100"
                           title="Envoyer les informations au photographe"
                           aria-label={`Envoyer les informations de ${c.name} au photographe`}
+                          onClick={(event) => event.stopPropagation()}
                         >
                           <ActionIcon name="whatsapp" />
                         </a>
@@ -511,7 +523,7 @@ export function ClientManager({
                       : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
                   </p>
                 </td>
-                <td className="px-4">
+                <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   <div className="flex gap-1">
                     {whatsappUrl(c.phone) && (
                       <a
@@ -521,6 +533,7 @@ export function ClientManager({
                         rel="noreferrer"
                         title="Ouvrir WhatsApp"
                         aria-label={`Ouvrir WhatsApp pour ${c.name}`}
+                        onClick={(event) => event.stopPropagation()}
                       >
                         <ActionIcon name="whatsapp" />
                       </a>
@@ -529,7 +542,10 @@ export function ClientManager({
                       className="icon-action"
                       title={canManage ? "Modifier" : "Consulter"}
                       aria-label={`${canManage ? "Modifier" : "Consulter"} ${c.name}`}
-                      onClick={() => setEditing(c)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditing(c);
+                      }}
                       aria-haspopup="dialog"
                     >
                       <ActionIcon name={canManage ? "edit" : "view"} />
@@ -540,7 +556,10 @@ export function ClientManager({
                         title="Supprimer"
                         aria-label={`Supprimer ${c.name}`}
                         disabled={deleting !== null}
-                        onClick={() => remove(c)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          remove(c);
+                        }}
                       >
                         <ActionIcon
                           name={deleting === c.id ? "loading" : "delete"}
@@ -563,6 +582,68 @@ export function ClientManager({
           </tbody>
         </table>
       </div>
+      {viewing && (
+        <SettingsDrawer
+          wide
+          title={viewing.name}
+          onClose={() => setViewing(null)}
+        >
+          <div className="mb-6 rounded-2xl bg-indigo-50 px-5 py-4">
+            <p className="text-xs font-bold tracking-[0.14em] text-indigo-500 uppercase">
+              Détails de la soutenance
+            </p>
+            <p className="mt-2 text-lg font-extrabold text-indigo-950">
+              {dateLabel(viewing.defenseDate)}
+            </p>
+            <p className="mt-1 text-sm text-indigo-700">
+              {viewing.packName || "Pack non renseigné"} · {viewing.facultyName || "Faculté non renseignée"}
+            </p>
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            {Object.entries({
+              "Nom complet": viewing.name,
+              Téléphone: viewing.phone,
+              "E-mail": viewing.email,
+              Soutenance: dateLabel(viewing.defenseDate),
+              Pack: viewing.packName,
+              Faculté: viewing.facultyName,
+              Binôme: viewing.isDuo ? "Oui" : "Non",
+              Suppléments: viewing.supplements.length
+                ? viewing.supplements.map((s) => `${s.name} (${formatDh(s.price)})`).join(", ")
+                : "Aucun",
+              "Total à payer": formatDh(viewing.total),
+              "Avance versée": formatDh(viewing.advance),
+              "Reste à payer": formatDh(remainingPrice(viewing.total, viewing.advance)),
+              Réduction: formatDh(viewing.discount),
+              Photographe: person(viewing.photographerId),
+              Monteur: catalog.editors.find((p) => p.id === viewing.editorId)?.name,
+              Statut: viewing.status,
+              "Lien Drive": viewing.driveUrl,
+              Commentaire: viewing.comment,
+              "Gain brut": viewing.grossProfit ? formatDh(viewing.grossProfit) : "—",
+            }).map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+                <dd className="mt-1 text-sm font-semibold whitespace-pre-wrap text-slate-900">
+                  {value || "—"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {canManage && (
+            <button
+              type="button"
+              className="btn-primary mt-6 w-full"
+              onClick={() => {
+                setEditing(viewing);
+                setViewing(null);
+              }}
+            >
+              Modifier ce dossier
+            </button>
+          )}
+        </SettingsDrawer>
+      )}
       {editing && (
         <SettingsDrawer
           wide

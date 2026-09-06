@@ -1,7 +1,7 @@
 "use server";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { sections, type Section } from "./config";
 export type State = { error?: string; success?: string };
 function money(data: FormData, key: string) {
@@ -113,6 +113,8 @@ export async function saveSetting(_: State, data: FormData): Promise<State> {
       }
     }
     revalidatePath("/parametres", "layout");
+    revalidateTag("settings", "max");
+    revalidateTag("clients", "max");
     return { success: "Enregistrement effectué." };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("Saisissez"))
@@ -147,6 +149,8 @@ export async function deleteSetting(
         break;
     }
     revalidatePath("/parametres", "layout");
+    revalidateTag("settings", "max");
+    revalidateTag("clients", "max");
     return { success: "Élément supprimé." };
   } catch {
     return {

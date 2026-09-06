@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { syncClientCalendar } from "@/lib/google-calendar";
@@ -191,6 +191,7 @@ async function saveClient(
       console.error("Google Calendar sync failed", calendarError);
     }
     revalidatePath("/");
+    revalidateTag("clients", "max");
     return { success: true };
   } catch (error) {
     return {
@@ -230,6 +231,7 @@ export async function updateClientQuick(
       data: { status, photographerId },
     });
     revalidatePath("/");
+    revalidateTag("clients", "max");
     return { success: true };
   } catch (error) {
     return {
@@ -245,4 +247,5 @@ export async function deleteClient(data: FormData) {
   const id = idValue(text(data, "id"))!;
   await prisma.client.delete({ where: { id } });
   revalidatePath("/");
+  revalidateTag("clients", "max");
 }

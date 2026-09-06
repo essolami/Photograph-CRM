@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { type SupplementChoice } from "@/lib/client-data";
 import { prisma } from "@/lib/prisma";
 import { ClientManager } from "../client-manager";
@@ -6,6 +7,28 @@ import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+const getClientPageData = unstable_cache(
+  async () =>
+    Promise.all([
+      prisma.client.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.pack.findMany({
+        where: { isActive: true },
+        include: {
+          rates: {
+            where: { faculty: { isActive: true } },
+            include: { faculty: true },
+          },
+        },
+        orderBy: { id: "asc" },
+      }),
+      prisma.supplement.findMany({ where: { isActive: true }, orderBy: { id: "asc" } }),
+      prisma.photographer.findMany({ orderBy: { name: "asc" } }),
+      prisma.editor.findMany({ orderBy: { name: "asc" } }),
+    ]),
+  ["client-page-data"],
+  { revalidate: 300, tags: ["clients"] },
+);
 
 function ClientListLoading() {
   return (
@@ -58,25 +81,12 @@ function ClientListLoading() {
 
 async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUser>> }) {
   const [clients, packs, supplements, photographers, editors] =
-    await Promise.all([
-      prisma.client.findMany({ orderBy: { createdAt: "desc" } }),
-      prisma.pack.findMany({
-        where: { isActive: true },
-        include: {
-          rates: {
-            where: { faculty: { isActive: true } },
-            include: { faculty: true },
-          },
-        },
-        orderBy: { id: "asc" },
-      }),
-      prisma.supplement.findMany({ where: { isActive: true }, orderBy: { id: "asc" } }),
-      prisma.photographer.findMany({ orderBy: { name: "asc" } }),
-      prisma.editor.findMany({ orderBy: { name: "asc" } }),
-    ]);
+    await getClientPageData();
   const records = clients.map((c) => ({
     ...c,
-    defenseDate: c.defenseDate?.toISOString().slice(0, 10) ?? "",
+    defenseDate: c.defenseDate
+      ? new Date(c.defenseDate).toISOString().slice(0, 10)
+      : "",
     basePrice: c.basePrice.toString(),
     supplements: c.supplements as SupplementChoice[],
     discount: c.discount.toString(),

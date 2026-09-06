@@ -126,7 +126,6 @@ export function Sidebar({
             <Link
               key={item.label}
               href={item.active ? "/" : "#"}
-              prefetch={false}
               aria-current={
                 item.active && currentPage === "clients" ? "page" : undefined
               }
@@ -148,7 +147,6 @@ export function Sidebar({
         {user.canManageUsers && (
           <Link
             href="/admin"
-            prefetch={false}
             aria-current={currentPage === "admin" ? "page" : undefined}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${currentPage === "admin" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
           >
