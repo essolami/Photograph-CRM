@@ -1,6 +1,5 @@
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { MobileHeader, Sidebar } from "../sidebar";
 import { CreateUserForm } from "./create-user-form";
 import { UserAccessForm } from "./user-access-form";
 
@@ -85,11 +84,7 @@ export default async function AdminPage({
 }) {
   const currentUser = await requirePermission("canManageUsers");
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={currentUser} activePage="admin" />
-      <div className="min-w-0 flex-1">
-        <MobileHeader />
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+        <div className="max-w-6xl">
           <p className="text-sm font-semibold tracking-wide text-indigo-600">
             ADMINISTRATION
           </p>
@@ -105,9 +100,7 @@ export default async function AdminPage({
           <Suspense fallback={<AdminListLoading />}>
             <AdminData currentUser={currentUser} searchParams={searchParams} />
           </Suspense>
-        </main>
-      </div>
-    </div>
+        </div>
   );
 }
 import { Suspense } from "react";

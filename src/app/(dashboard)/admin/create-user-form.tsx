@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { createUser } from "./actions";
-import { useToast } from "../toast";
+import { useToast } from "../../toast";
 
 const permissions = [
   ["canViewClients", "View clients"],

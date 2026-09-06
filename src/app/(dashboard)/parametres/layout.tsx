@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { Sidebar, MobileHeader } from "../sidebar";
 import { SettingsNav } from "./settings-nav";
 export default async function SettingsLayout({
   children,
@@ -10,11 +9,8 @@ export default async function SettingsLayout({
   const user = await requireUser();
   if (!user.canManageUsers) redirect("/forbidden");
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={user} activePage="settings" />
-      <div className="min-w-0 flex-1">
-        <MobileHeader />
-        <header className="hidden h-20 items-center justify-between border-b border-slate-200/70 bg-white/80 px-10 lg:flex">
+    <>
+        <header className="mb-8 hidden h-12 items-center justify-between border-b border-slate-200/70 bg-white/80 lg:flex">
           <p className="flex items-center gap-3 text-sm">
             <span className="text-slate-400">Espace de travail</span>
             <span className="text-slate-300">/</span>
@@ -25,11 +21,8 @@ export default async function SettingsLayout({
             Administration
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-10 lg:py-10">
-          <SettingsNav mobile />
-          <div>{children}</div>
-        </main>
-      </div>
-    </div>
+        <SettingsNav mobile />
+        <div>{children}</div>
+    </>
   );
 }

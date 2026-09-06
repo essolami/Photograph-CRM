@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ActionIcon } from "../action-icon";
+import { ActionIcon } from "../../action-icon";
 import { deleteSetting } from "./actions";
 import { SettingsDrawer } from "./settings-drawer";
 import { SettingForm } from "./setting-form";

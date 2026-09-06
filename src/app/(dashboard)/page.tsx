@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import { type SupplementChoice } from "@/lib/client-data";
 import { prisma } from "@/lib/prisma";
-import { ClientManager } from "./client-manager";
-import { MobileHeader, Sidebar } from "./sidebar";
+import { ClientManager } from "../client-manager";
 import { requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -110,16 +109,8 @@ export default async function Home() {
     redirect(user.canManageUsers ? "/admin" : "/forbidden");
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={user} />
-      <div className="min-w-0 flex-1">
-        <MobileHeader />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-          <Suspense fallback={<ClientListLoading />}>
-            <ClientData user={user} />
-          </Suspense>
-        </main>
-      </div>
-    </div>
+    <Suspense fallback={<ClientListLoading />}>
+      <ClientData user={user} />
+    </Suspense>
   );
 }

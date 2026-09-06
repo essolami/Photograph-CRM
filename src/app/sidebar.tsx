@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { SettingsNav } from "./parametres/settings-nav";
+import { usePathname } from "next/navigation";
+import { SettingsNav } from "./(dashboard)/parametres/settings-nav";
 import { logout } from "./auth-actions";
 
 type SidebarUser = {
@@ -100,6 +103,12 @@ export function Sidebar({
   user: SidebarUser;
   activePage?: "clients" | "settings" | "admin";
 }) {
+  const pathname = usePathname();
+  const currentPage = pathname.startsWith("/admin")
+    ? "admin"
+    : pathname.startsWith("/parametres")
+      ? "settings"
+      : activePage;
   const visibleItems = navItems
     .filter((item) => item.label !== "Clients" || user.canViewClients)
     .filter((item) => item.label !== "Factures" || user.canViewInvoices);
@@ -119,9 +128,9 @@ export function Sidebar({
               href={item.active ? "/" : "#"}
               prefetch={false}
               aria-current={
-                item.active && activePage === "clients" ? "page" : undefined
+                item.active && currentPage === "clients" ? "page" : undefined
               }
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${item.active && activePage === "clients" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${item.active && currentPage === "clients" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
             >
               <Icon name={item.icon} />
               {item.label}
@@ -140,8 +149,8 @@ export function Sidebar({
           <Link
             href="/admin"
             prefetch={false}
-            aria-current={activePage === "admin" ? "page" : undefined}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${activePage === "admin" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
+            aria-current={currentPage === "admin" ? "page" : undefined}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${currentPage === "admin" ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
           >
             <Icon name="clients" /> Utilisateurs et accès
           </Link>

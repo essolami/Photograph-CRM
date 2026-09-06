@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { ActionIcon } from "../action-icon";
+import { ActionIcon } from "../../action-icon";
 import { updateUser } from "./actions";
-import { useToast } from "../toast";
+import { useToast } from "../../toast";
 
 type ManagedUser = {
   id: number;

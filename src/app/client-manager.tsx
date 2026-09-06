@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ActionIcon } from "./action-icon";
 import { deleteClient, updateClientQuick } from "./actions";
 import { ClientForm } from "./client-form";
-import { SettingsDrawer } from "./parametres/settings-drawer";
+import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
   formatDh,
   remainingPrice,
