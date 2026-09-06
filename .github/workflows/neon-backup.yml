@@ -1,0 +1,36 @@
+name: Backup Neon database
+
+on:
+  schedule:
+    # Twice per month: the 1st and 15th at 02:00 UTC.
+    - cron: "0 2 1,15 * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create database backup
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$DATABASE_URL"
+          mkdir -p backups
+          docker run --rm \
+            -e DATABASE_URL="$DATABASE_URL" \
+            postgres:18-alpine \
+            pg_dump \
+            --format=custom \
+            --no-owner \
+            --no-acl \
+            "$DATABASE_URL" \
+            > "backups/neon-backup-$(date -u +%Y-%m-%d).dump"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-database-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 90
