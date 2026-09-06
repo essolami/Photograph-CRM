@@ -59,3 +59,9 @@ Pour appliquer les migrations versionnées : `npx prisma migrate deploy`, puis `
 Chaque rubrique est accessible dans la barre latérale. Le formulaire Facultés gère uniquement le nom et le statut. Le formulaire Packs enregistre le nom, le statut et tous les tarifs par faculté en une transaction. La route historique `/parametres/tarifs` redirige vers Packs ; aucun écran tarifaire séparé n’est nécessaire. Le prix de référence historique des packs est conservé en base mais masqué dans les formulaires.
 
 Les facultés se renseignent désormais directement dans chaque pack sous forme de lignes (nom, tarif solo, tarif binôme). La page Facultés redirige vers Packs. Ajouter, renommer ou retirer une ligne ne modifie que les associations du pack concerné ; les autres packs conservent leurs tarifs.
+
+## Google Calendar
+
+Activez Google Calendar API dans Google Cloud, créez un identifiant OAuth de type « application Web », puis renseignez `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `GOOGLE_REDIRECT_URI` dans `.env`. Ajoutez exactement `http://localhost:3000/api/google/callback` aux URI de redirection autorisées. Ensuite, ouvrez Paramètres et cliquez sur « Connecter Google Calendar » en choisissant `essolamih@gmail.com`.
+
+Le CRM utilise le calendrier principal du compte autorisé et synchronise la date, le client, la prestation, les suppléments, le photographe, le monteur, le statut et le commentaire. Les tokens Google et les identifiants d’événements doivent être protégés en production.

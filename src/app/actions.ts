@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
+import { syncClientCalendar } from "@/lib/google-calendar";
 import {
   cents,
   totalPrice,
@@ -26,6 +27,7 @@ async function saveClient(
 ): Promise<ClientActionState> {
   await requirePermission("canManageClients");
   try {
+    let savedClientId: number;
     const id = editing ? idValue(text(data, "id")) : null;
     const name = text(data, "name"),
       phone = text(data, "phone"),
@@ -175,9 +177,19 @@ async function saveClient(
         comment: comment || null,
         grossProfit: grossProfit ? grossProfit.replace(",", ".") : null,
       };
-      if (id) await tx.client.update({ where: { id }, data: values });
-      else await tx.client.create({ data: values });
+      if (id) {
+        await tx.client.update({ where: { id }, data: values });
+        savedClientId = id;
+      } else {
+        const created = await tx.client.create({ data: values });
+        savedClientId = created.id;
+      }
     });
+    try {
+      await syncClientCalendar(savedClientId!);
+    } catch (calendarError) {
+      console.error("Google Calendar sync failed", calendarError);
+    }
     revalidatePath("/");
     return { success: true };
   } catch (error) {

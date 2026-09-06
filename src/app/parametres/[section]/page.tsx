@@ -5,11 +5,14 @@ import { sections, type Section } from "../config";
 import { SettingsTable } from "../settings-table";
 export default async function SettingsSection({
   params,
+  searchParams,
 }: {
   params: Promise<{ section: string }>;
+  searchParams: Promise<{ calendar?: string; count?: string }>;
 }) {
   await requirePermission("canManageUsers");
   const { section: key } = await params;
+  const query = await searchParams;
   if (key === "tarifs" || key === "facultes") redirect("/parametres/packs");
   if (!Object.hasOwn(sections, key)) notFound();
   const section = key as Section;
@@ -49,6 +52,40 @@ export default async function SettingsSection({
       <p className="mt-3 mb-8 max-w-2xl text-sm leading-6 text-slate-500">
         {config.description}
       </p>
+      {query.calendar === "not-configured" && (
+        <p
+          role="alert"
+          className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800"
+        >
+          Google Calendar n’est pas configuré. Ajoutez GOOGLE_CLIENT_ID et
+          GOOGLE_CLIENT_SECRET dans le fichier .env, puis redémarrez le serveur.
+        </p>
+      )}
+      {query.calendar === "error" && (
+        <p
+          role="alert"
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+        >
+          La connexion Google Calendar a échoué. Vérifiez les identifiants OAuth
+          et l’URI de redirection.
+        </p>
+      )}
+      {query.calendar === "connected" && (
+        <p
+          role="status"
+          className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+        >
+          Google Calendar est connecté.
+        </p>
+      )}
+      {query.calendar === "synced" && (
+        <p
+          role="status"
+          className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+        >
+          {query.count ?? "0"} client(s) synchronisé(s) avec Google Calendar.
+        </p>
+      )}
       <SettingsTable
         key={section}
         section={section}
