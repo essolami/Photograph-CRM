@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createClient, updateClient, updateClientDrive } from "./actions";
 import {
   cents,
@@ -27,6 +27,8 @@ export function ClientForm({
   const [selected, setSelected] = useState(
     client?.supplements.map((s) => s.id) ?? [],
   );
+  const formRef = useRef<HTMLFormElement>(null);
+  const submittedValues = useRef<Record<string, string>>({});
   const [state, action, pending] = useActionState(
     async (previous: { error?: string; success?: boolean }, data: FormData) => {
       const result = await (client ? updateClient : createClient)(
@@ -38,6 +40,14 @@ export function ClientForm({
     },
     {},
   );
+  useEffect(() => {
+    if (!state.error || !formRef.current) return;
+    for (const element of Array.from(formRef.current.elements)) {
+      if (!(element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement)) continue;
+      const saved = submittedValues.current[element.name];
+      if (saved !== undefined && element.type !== "checkbox" && element.type !== "radio") element.value = saved;
+    }
+  }, [state]);
   const pack = catalog.packs.find((p) => String(p.id) === packId);
   const rate = pack?.rates.find((r) => String(r.facultyId) === facultyId);
   const sameRate =
@@ -92,7 +102,18 @@ export function ClientForm({
     </label>
   );
   return (
-    <form action={action} className="client-form space-y-6">
+    <form
+      ref={formRef}
+      action={action}
+      onSubmit={(event) => {
+        const values: Record<string, string> = {};
+        for (const [key, value] of new FormData(event.currentTarget).entries()) {
+          if (typeof value === "string") values[key] = value;
+        }
+        submittedValues.current = values;
+      }}
+      className="client-form space-y-4"
+    >
       {client && <input type="hidden" name="id" value={client.id} />}
       <fieldset
         disabled={pending}

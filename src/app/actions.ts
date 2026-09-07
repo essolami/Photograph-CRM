@@ -11,7 +11,103 @@ import {
   type SupplementChoice,
 } from "@/lib/client-data";
 export type ClientActionState = { error?: string; success?: boolean };
+export type ClientImportState = { error?: string; success?: boolean; imported?: number; rows?: string[] };
 class InvalidClient extends Error {}
+const normalizeImport = (value: unknown) => String(value ?? "").trim().toLocaleLowerCase("fr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+const importValue = (row: Record<string, unknown>, aliases: string[]) => {
+  const key = Object.keys(row).find((item) => aliases.includes(normalizeImport(item)));
+  return key ? String(row[key] ?? "").trim() : "";
+};
+const amountFromCell = (value: string, label?: string) => {
+  const match = label
+    ? value.match(new RegExp(`${label}\\s*[:=]\\s*([\\d\\s.,]+)`, "i"))
+    : value.match(/^\s*([\d\s.,]+)/);
+  return match ? Number(match[1].replace(/\s/g, "").replace(",", ".")) : 0;
+};
+function importDate(value: string) {
+  const match = value.match(/(\d{1,2})[\s/-]+(\d{1,2})[\s/-]+(\d{2,4})/);
+  if (match) {
+    const year = match[3].length === 2 ? `20${match[3]}` : match[3];
+    return new Date(`${year}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}T00:00:00.000Z`);
+  }
+  const iso = new Date(value);
+  return iso;
+}
+
+export async function importClients(rows: unknown[], defaultPackId?: number): Promise<ClientImportState> {
+  await requirePermission("canManageClients");
+  if (!Array.isArray(rows) || rows.length === 0) return { error: "Le fichier ne contient aucune ligne." };
+  if (rows.length > 1000) return { error: "Import limité à 1000 clients par fichier." };
+  const errors: string[] = [];
+  let imported = 0;
+  await prisma.$transaction(async (tx) => {
+    // A data-only dump can leave PostgreSQL sequences behind the imported IDs.
+    // Align the next Client ID before creating imported rows.
+    await tx.$executeRaw`SELECT setval(pg_get_serial_sequence('"Client"', 'id'), COALESCE((SELECT MAX("id") FROM "Client"), 0) + 1, false)`;
+    const [packs, faculties, supplements, photographers] = await Promise.all([
+      tx.pack.findMany({ where: { isActive: true }, include: { rates: { include: { faculty: true } } } }),
+      tx.faculty.findMany({ where: { isActive: true } }),
+      tx.supplement.findMany({ where: { isActive: true } }),
+      tx.photographer.findMany({ where: { isActive: true } }),
+    ]);
+    for (const [index, raw] of rows.entries()) {
+      const row = raw as Record<string, unknown>;
+      const line = index + 2;
+      if (!Object.values(row).some((value) => String(value ?? "").trim() !== "")) continue;
+      const cells = Object.values(row).map((value) => String(value ?? "").trim());
+      const name = importValue(row, ["nomprenom", "nom", "name", "client", "nomcomplet", "prenomnom"]) || cells[1] || "";
+      const dateText = importValue(row, ["date", "soutenance", "datesoutenance"]) || cells[0] || "";
+      const packText = importValue(row, ["pack", "packchoisi", "prestation", "packdemande", "prestationdemandee"]) || cells[5] || "";
+      const facultyText = importValue(row, ["fac", "faculte", "faculty", "faculteuniversite", "universite"]) || cells[3] || "";
+      if (!name || !dateText || !facultyText) { errors.push(`Ligne ${line} : nom, date ou faculté manquant.`); continue; }
+      const date = importDate(dateText);
+      const fallbackPack = defaultPackId ? packs.find((item) => item.id === defaultPackId) : undefined;
+      const pack = packs.find((item) => normalizeImport(item.name) === normalizeImport(packText)) ?? (!packText ? fallbackPack : undefined);
+      const faculty = faculties.find((item) => normalizeImport(item.name) === normalizeImport(facultyText));
+      if (!Number.isFinite(date.getTime()) || !pack || !faculty) { errors.push(`Ligne ${line} : date, pack ou faculté introuvable.`); continue; }
+      const rate = pack.rates.find((item) => item.facultyId === faculty.id);
+      if (!rate) { errors.push(`Ligne ${line} : aucun tarif pour ${pack.name} / ${faculty.name}.`); continue; }
+      const supplementText = importValue(row, ["supplement", "supplements", "options"]);
+      const isChecked = (value: unknown) => {
+        const raw = String(value ?? "").trim().toLocaleLowerCase("fr");
+        const normalized = normalizeImport(value);
+        return ["true", "oui", "yes", "1", "x", "checked", "✓", "☑"].includes(raw) || normalized === "true" || normalized === "oui" || normalized === "yes" || normalized === "1" || normalized === "x" || normalized === "checked";
+      };
+      const checkedSupplementNames = Object.entries(row)
+        .filter(([key, value]) => isChecked(value) && ["toge", "persotoge", "tableau", "miroir", "album", "photobook", "deco", "rollup", "cadeau"].some((name) => normalizeImport(key).includes(name)))
+        .map(([key]) => {
+          const normalized = normalizeImport(key);
+          return ["persotoge", "toge", "tableau", "miroir", "album", "photobook", "deco", "rollup", "cadeau"].find((name) => normalized.includes(name)) ?? normalized;
+        });
+      const selectedSupplements = supplements.filter((item) => {
+        const itemName = normalizeImport(item.name);
+        return (supplementText && normalizeImport(supplementText).includes(itemName)) || checkedSupplementNames.includes(itemName);
+      }).map((item) => ({ id: item.id, name: item.name, price: item.price.toString() }));
+      const isDuo = /binome|duo|oui/i.test(importValue(row, ["binome", "duo"]) || cells[4] || "");
+      const basePrice = (isDuo ? rate.duoPrice : rate.soloPrice).toString();
+      const paymentCell = importValue(row, ["avance", "paiement", "total", "totalapayer"]);
+      const sheetTotal = amountFromCell(paymentCell, "total") || amountFromCell(importValue(row, ["total", "totalapayer"]));
+      const total = sheetTotal || Number(basePrice) + selectedSupplements.reduce((sum, item) => sum + Number(item.price), 0);
+      const advanceCell = importValue(row, ["avance", "paiement"]);
+      const advance = amountFromCell(advanceCell, "avance") || amountFromCell(importValue(row, ["avance"]));
+      const phone = importValue(row, ["telephone", "tel", "phone"]) || cells[2] || null;
+      const photographerText = importValue(row, ["photographe", "photographer"]);
+      const photographer = photographers.find((item) => normalizeImport(item.name) === normalizeImport(photographerText));
+      const editorText = importValue(row, ["monteur", "editor"]);
+      const editor = await tx.editor.findFirst({ where: { name: { equals: editorText, mode: "insensitive" } } });
+      const statusText = importValue(row, ["statutduprojet", "statut", "status"]);
+      const status = projectStatuses.includes(statusText as (typeof projectStatuses)[number]) ? statusText : "En cours";
+      const discount = amountFromCell(importValue(row, ["reduction", "remise"]));
+      const grossProfit = amountFromCell(importValue(row, ["gainbrut", "gain"]));
+      const driveUrl = importValue(row, ["liendrive", "drive"]);
+      const comment = importValue(row, ["commentaire", "comment"]);
+      await tx.client.create({ data: { name, phone, email: null, defenseDate: date, packId: pack.id, facultyId: faculty.id, packName: pack.name, facultyName: faculty.name, isDuo, basePrice, supplements: selectedSupplements, discount, total, advance: Math.min(advance, total), photographerId: photographer?.id ?? null, editorId: editor?.id ?? null, status, driveUrl: driveUrl || null, comment: comment || null, grossProfit: grossProfit || null } });
+      imported++;
+    }
+  });
+  revalidatePath("/");
+  return { success: true, imported, rows: errors };
+}
 const text = (data: FormData, key: string) =>
   String(data.get(key) ?? "").trim();
 function idValue(value: string, optional = false) {

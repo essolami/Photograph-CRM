@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ActionIcon } from "./action-icon";
 import { deleteClient, updateClientQuick } from "./actions";
 import { ClientForm, DriveLinkForm } from "./client-form";
+import { ClientImport } from "./client-import";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
   formatDh,
@@ -237,9 +238,12 @@ export function ClientManager({
           </div>
 
           {canManage && (
-            <button className="btn-primary" onClick={() => setEditing("new")}>
-              Ajouter un client
-            </button>
+            <div className="flex gap-2">
+              <ClientImport packs={catalog.packs.map((pack) => ({ id: pack.id, name: pack.name }))} onDone={() => router.refresh()} />
+              <button className="btn-primary" onClick={() => setEditing("new")}>
+                Ajouter un client
+              </button>
+            </div>
           )}
           <button
             type="button"
@@ -647,6 +651,7 @@ export function ClientManager({
       {editing && (
         <SettingsDrawer
           wide
+          compact
           title={editing === "new" ? "Ajouter un client" : editing.name}
           onClose={() => setEditing(null)}
         >
