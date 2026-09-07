@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createUser } from "./actions";
 import { useToast } from "../../toast";
 
@@ -13,18 +13,31 @@ const roles = [
 
 export function CreateUserForm() {
   const toast = useToast();
-  const [state, action, pending] = useActionState(createUser, {});
-  const form = useRef<HTMLFormElement>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("USER");
+  const [state, action, pending] = useActionState(
+    async (previous: { error?: string; success?: boolean }, data: FormData) => {
+      const result = await createUser(previous, data);
+      if (result.success) {
+        setName("");
+        setEmail("");
+        setPassword("");
+        setRole("USER");
+      }
+      return result;
+    },
+    {},
+  );
   useEffect(() => {
     if (state.success) {
-      form.current?.reset();
-      toast.success("User created successfully.");
+      toast.success("Compte créé avec succès.");
     }
     if (state.error) toast.error(state.error);
   }, [state.success, state.error, toast]);
   return (
     <form
-      ref={form}
       action={action}
       className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
     >
@@ -35,11 +48,11 @@ export function CreateUserForm() {
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label>
           <span className="mb-2 block text-sm font-medium">Full name</span>
-          <input className="field" name="name" required />
+          <input className="field" name="name" value={name} onChange={(event) => setName(event.target.value)} required />
         </label>
         <label>
           <span className="mb-2 block text-sm font-medium">Email</span>
-          <input className="field" name="email" type="email" required />
+          <input className="field" name="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         </label>
         <label className="sm:col-span-2">
           <span className="mb-2 block text-sm font-medium">
@@ -50,6 +63,8 @@ export function CreateUserForm() {
             name="password"
             type="password"
             minLength={8}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             required
           />
         </label>
@@ -59,7 +74,7 @@ export function CreateUserForm() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {roles.map(([value, label, description]) => (
             <label key={value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700 has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50">
-              <input type="radio" name="role" value={value} defaultChecked={value === "USER"} className="mt-1 h-4 w-4 accent-indigo-600" />
+              <input type="radio" name="role" value={value} checked={role === value} onChange={() => setRole(value)} className="mt-1 h-4 w-4 accent-indigo-600" />
               <span><span className="block font-semibold">{label}</span><span className="text-xs text-slate-500">{description}</span></span>
             </label>
           ))}
