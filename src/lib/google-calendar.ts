@@ -61,16 +61,30 @@ export async function syncClientCalendar(clientId: number) {
   ]
     .filter(Boolean)
     .join("\n");
-  const event = {
-    summary: `Soutenance — ${client.name}`,
-    description,
-    start: { date: client.defenseDate.toISOString().slice(0, 10) },
-    end: {
-      date: new Date(client.defenseDate.getTime() + 86400000)
-        .toISOString()
-        .slice(0, 10),
-    },
-  };
+  const date = client.defenseDate.toISOString().slice(0, 10);
+  const event = client.defenseTime
+    ? (() => {
+        const start = `${date}T${client.defenseTime}:00`;
+        const endDate = new Date(`${date}T${client.defenseTime}:00Z`);
+        endDate.setUTCHours(endDate.getUTCHours() + 1);
+        const end = endDate.toISOString().slice(0, 16);
+        return {
+          summary: `Soutenance — ${client.name}`,
+          description,
+          start: { dateTime: start, timeZone: "Africa/Casablanca" },
+          end: { dateTime: end, timeZone: "Africa/Casablanca" },
+        };
+      })()
+    : {
+        summary: `Soutenance — ${client.name}`,
+        description,
+        start: { date },
+        end: {
+          date: new Date(client.defenseDate.getTime() + 86400000)
+            .toISOString()
+            .slice(0, 10),
+        },
+      };
   if (client.googleEventId)
     await calendar.events.update({
       calendarId: connection.calendarId,

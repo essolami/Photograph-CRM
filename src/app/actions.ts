@@ -135,6 +135,7 @@ async function saveClient(
     if (email && (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)))
       throw new InvalidClient("Adresse e-mail invalide.");
     const date = text(data, "defenseDate");
+    const time = text(data, "defenseTime");
     const defenseDate = new Date(`${date}T00:00:00.000Z`);
     if (
       !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
@@ -142,6 +143,8 @@ async function saveClient(
       defenseDate.toISOString().slice(0, 10) !== date
     )
       throw new InvalidClient("Renseignez une date de soutenance valide.");
+    if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
+      throw new InvalidClient("Renseignez une heure de soutenance valide.");
     const status = text(data, "status");
     if (!projectStatuses.some((s) => s === status))
       throw new InvalidClient("Statut de projet invalide.");
@@ -256,6 +259,7 @@ async function saveClient(
         phone,
         email: email || null,
         defenseDate,
+        defenseTime: time || null,
         packId,
         facultyId,
         packName,

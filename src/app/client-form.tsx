@@ -138,6 +138,7 @@ export function ClientForm({
           client?.defenseDate,
           true,
         )}
+        {field("defenseTime", "Heure de soutenance", "time", client?.defenseTime, true)}
       </fieldset>
       <fieldset
         disabled={pending}

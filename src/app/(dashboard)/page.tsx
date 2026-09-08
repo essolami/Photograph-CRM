@@ -90,6 +90,7 @@ async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUse
     defenseDate: c.defenseDate
       ? new Date(c.defenseDate).toISOString().slice(0, 10)
       : "",
+    defenseTime: c.defenseTime,
     basePrice: privateData ? c.basePrice.toString() : "",
     supplements: c.supplements as SupplementChoice[],
     discount: privateData ? c.discount.toString() : "",

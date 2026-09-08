@@ -13,6 +13,7 @@ export type ClientRecord = {
   phone: string | null;
   email: string | null;
   defenseDate: string;
+  defenseTime: string | null;
   packId: number | null;
   facultyId: number | null;
   packName: string | null;

@@ -13,6 +13,7 @@ model Client {
   email     String?  @unique
   phone     String?
   defenseDate DateTime? @db.Date
+  defenseTime String?
   facultyId Int?
   packId Int?
   isDuo Boolean @default(false)
