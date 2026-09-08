@@ -7,9 +7,14 @@ const scopes = [
   "email",
   "profile",
 ];
-const redirectUri = () =>
-  process.env.GOOGLE_REDIRECT_URI ??
-  "http://localhost:3000/api/google/callback";
+const redirectUri = () => {
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  const productionHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  if (productionHost)
+    return `https://${productionHost.replace(/^https?:\/\//, "")}/api/google/callback`;
+  return "http://localhost:3000/api/google/callback";
+};
 
 export function googleOAuthClient() {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET)
