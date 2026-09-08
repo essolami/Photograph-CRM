@@ -14,10 +14,14 @@ export function ClientForm({
   client,
   catalog,
   onDone,
+  onOptimistic,
+  onError,
 }: {
   client?: ClientRecord;
   catalog: ClientCatalog;
   onDone: () => void;
+  onOptimistic?: (data: FormData) => void;
+  onError?: () => void;
 }) {
   const [packId, setPackId] = useState(String(client?.packId ?? ""));
   const [facultyId, setFacultyId] = useState(String(client?.facultyId ?? ""));
@@ -36,6 +40,7 @@ export function ClientForm({
         data,
       );
       if (result.success) onDone();
+      else onError?.();
       return result;
     },
     {},
@@ -106,6 +111,7 @@ export function ClientForm({
       ref={formRef}
       action={action}
       onSubmit={(event) => {
+        onOptimistic?.(new FormData(event.currentTarget));
         const values: Record<string, string> = {};
         for (const [key, value] of new FormData(event.currentTarget).entries()) {
           if (typeof value === "string") values[key] = value;

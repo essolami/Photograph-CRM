@@ -7,6 +7,7 @@ import { ClientForm, DriveLinkForm } from "./client-form";
 import { ClientImport } from "./client-import";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
+  totalPrice,
   formatDh,
   remainingPrice,
   projectStatuses,
@@ -51,13 +52,16 @@ export function ClientManager({
   const [deleting, setDeleting] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [updating, startUpdate] = useTransition();
+  const [optimistic, setOptimistic] = useState<Record<number, Partial<ClientRecord>>>({});
+  const rollbackOptimistic = (id: number) => setOptimistic((current) => { const next = { ...current }; delete next[id]; return next; });
+  const displayClients = clients.map((client) => ({ ...client, ...optimistic[client.id] }));
   const router = useRouter();
   const normalize = (s: string) =>
     s
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLocaleLowerCase("fr");
-  const filtered = clients.filter(
+  const filtered = displayClients.filter(
     (c) =>
       normalize(`${c.name} ${c.phone ?? ""} ${c.email ?? ""}`).includes(
         normalize(query.trim()),
@@ -77,7 +81,7 @@ export function ClientManager({
   const packOptions = Array.from(
     new Map([
       ...catalog.packs.map((p) => [p.id, p.name] as const),
-      ...clients
+      ...displayClients
         .filter((c) => c.packId && c.packName)
         .map((c) => [c.packId!, c.packName!] as const),
     ]),
@@ -140,6 +144,13 @@ export function ClientManager({
     field: "photographerId" | "status",
     value: string,
   ) {
+    setOptimistic((current) => ({
+      ...current,
+      [client.id]: {
+        ...current[client.id],
+        [field]: field === "photographerId" ? (value ? Number(value) : null) : value,
+      },
+    }));
     startUpdate(async () => {
       const data = new FormData();
       data.set("id", String(client.id));
@@ -151,13 +162,57 @@ export function ClientManager({
       );
       data.set("status", field === "status" ? value : client.status);
       const result = await updateClientQuick(data);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        rollbackOptimistic(client.id);
+        setError(result.error);
+      }
       else {
         setError("");
         setNotice("Mise à jour enregistrée.");
-        router.refresh();
       }
     });
+  }
+  function applyOptimisticClient(data: FormData) {
+    const id = Number(data.get("id"));
+    if (!Number.isSafeInteger(id)) return;
+    const current = displayClients.find((client) => client.id === id);
+    if (!current) return;
+    const packId = Number(data.get("packId"));
+    const facultyId = Number(data.get("facultyId"));
+    const isDuo = data.get("isDuo") === "true";
+    const pack = catalog.packs.find((item) => item.id === packId);
+    const rate = pack?.rates.find((item) => item.facultyId === facultyId);
+    const chosen = catalog.supplements.filter((item) => data.getAll("supplementId").map(String).includes(String(item.id)));
+    const base = rate ? (isDuo ? rate.duoPrice : rate.soloPrice) : current.basePrice;
+    let total = current.total;
+    try { total = totalPrice(base, chosen, String(data.get("discount") ?? "0")); } catch { /* server will report the validation error */ }
+    const photographerId = data.get("photographerId") ? Number(data.get("photographerId")) : null;
+    const editorId = data.get("editorId") ? Number(data.get("editorId")) : null;
+    setOptimistic((patches) => ({
+      ...patches,
+      [id]: {
+        name: String(data.get("name") ?? ""),
+        phone: String(data.get("phone") ?? "") || null,
+        email: String(data.get("email") ?? "") || null,
+        defenseDate: String(data.get("defenseDate") ?? ""),
+        packId: pack?.id ?? current.packId,
+        facultyId: rate?.facultyId ?? current.facultyId,
+        packName: pack?.name ?? current.packName,
+        facultyName: rate?.name ?? current.facultyName,
+        isDuo,
+        basePrice: base,
+        supplements: chosen,
+        discount: String(data.get("discount") ?? "0"),
+        total,
+        advance: String(data.get("advance") ?? "0"),
+        photographerId,
+        editorId,
+        status: String(data.get("status") ?? current.status),
+        driveUrl: String(data.get("driveUrl") ?? "") || null,
+        comment: String(data.get("comment") ?? "") || null,
+        grossProfit: String(data.get("grossProfit") ?? ""),
+      },
+    }));
   }
   return (
     <>
@@ -362,7 +417,7 @@ export function ClientManager({
       </div>
       <div className="mb-3 flex items-center justify-between">
         <p role="status" className="text-sm text-slate-500">
-          {filtered.length} client(s) sur {clients.length}
+          {filtered.length} client(s) sur {displayClients.length}
         </p>
         {(query ||
           status ||
@@ -583,7 +638,7 @@ export function ClientManager({
             {!filtered.length && (
               <tr>
                 <td colSpan={8} className="p-10 text-center text-slate-500">
-                  {clients.length
+                  {displayClients.length
                     ? "Aucun client ne correspond aux filtres."
                     : "Aucun client enregistré."}
                 </td>
@@ -660,6 +715,8 @@ export function ClientManager({
               client={editing === "new" ? undefined : editing}
               catalog={catalog}
               onDone={() => setEditing(null)}
+              onOptimistic={editing === "new" ? undefined : applyOptimisticClient}
+              onError={editing === "new" ? undefined : () => rollbackOptimistic(editing.id)}
             />
           ) : canEditDrive && editing !== "new" ? (
             <DriveLinkForm client={editing} onDone={() => setEditing(null)} />
