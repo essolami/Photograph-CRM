@@ -294,11 +294,25 @@ async function saveClient(
     revalidateTag("clients", "max");
     return { success: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+    console.error("Save client failed:", error);
+    if (code === "P2002" || /unique constraint|duplicate key/i.test(message))
+      return { error: "Cet e-mail est déjà utilisé par un autre client." };
+    if (code === "P2022" || /column.*defenseTime|defenseTime.*column|does not exist/i.test(message))
+      return { error: "La base de données n’est pas à jour. Exécutez la migration Prisma, puis réessayez." };
+    if (code === "P2003")
+      return { error: "Un pack, une faculté, un photographe ou un monteur sélectionné n’existe plus." };
+    if (code === "P1001" || code === "P1002" || /timeout|timed out|connect/i.test(message))
+      return { error: "La base de données est momentanément inaccessible. Réessayez dans quelques secondes." };
     return {
       error:
         error instanceof InvalidClient
           ? error.message
-          : "Impossible d’enregistrer. Vérifiez notamment que l’e-mail n’est pas déjà utilisé, puis réessayez.",
+          : "Impossible d’enregistrer ce client. Consultez les logs du serveur pour le détail.",
     };
   }
 }
