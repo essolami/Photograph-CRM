@@ -5,6 +5,7 @@ import { ActionIcon } from "./action-icon";
 import { deleteClient, updateClientQuick } from "./actions";
 import { ClientForm, DriveLinkForm } from "./client-form";
 import { ClientImport } from "./client-import";
+import { ClientExport } from "./client-export";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
   totalPrice,
@@ -273,6 +274,9 @@ export function ClientManager({
               </div>
             </div>
             {canExport && (
+              <ClientExport clients={displayClients} catalog={catalog} />
+            )}
+            {canExport && (
               <a
                 href="/api/clients/today-pdf"
                 className="icon-action"
@@ -294,7 +298,6 @@ export function ClientManager({
 
           {canManage && (
             <div className="flex gap-2">
-              <ClientImport packs={catalog.packs.map((pack) => ({ id: pack.id, name: pack.name }))} onDone={() => router.refresh()} />
               <button className="btn-primary" onClick={() => setEditing("new")}>
                 Ajouter un client
               </button>
@@ -360,6 +363,15 @@ export function ClientManager({
               ))}
             </div>
           </fieldset>
+          {canManage && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-700">Importer des clients</p>
+                <p className="mt-1 text-xs text-slate-500">Ajoutez plusieurs clients depuis un fichier Excel ou CSV.</p>
+              </div>
+              <ClientImport packs={catalog.packs.map((pack) => ({ id: pack.id, name: pack.name }))} onDone={() => router.refresh()} />
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <label className="text-xs font-semibold text-slate-500">
               Pack
