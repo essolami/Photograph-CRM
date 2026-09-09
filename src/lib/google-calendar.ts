@@ -8,7 +8,11 @@ const scopes = [
   "profile",
 ];
 const redirectUri = () => {
-  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+  const configured = process.env.GOOGLE_REDIRECT_URI;
+  if (configured && !(process.env.VERCEL && configured.includes("localhost")))
+    return configured;
+  if (process.env.VERCEL)
+    return "https://photograph-crm.vercel.app/api/google/callback";
   const productionHost =
     process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
   if (productionHost)
