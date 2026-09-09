@@ -19,6 +19,7 @@ async function AdminData({
   currentUser: Awaited<ReturnType<typeof requirePermission>>;
 }) {
   const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+  const editors = await prisma.editor.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
   return (
     <>
       <section className="mt-8">
@@ -27,7 +28,7 @@ async function AdminData({
         </h2>
         <div className="space-y-4">
           {users.map((user) => (
-            <UserAccessForm key={user.id} user={user} isSelf={user.id === currentUser.id} />
+            <UserAccessForm key={user.id} user={user} editors={editors} isSelf={user.id === currentUser.id} />
           ))}
         </div>
       </section>
@@ -70,7 +71,7 @@ export default async function AdminPage({
             Control who can access each part of your CRM.
           </p>
           <div className="mt-8">
-            <CreateUserForm />
+          <CreateUserForm editors={await prisma.editor.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })} />
           </div>
           <Suspense fallback={<div className="mt-8 h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />}>
             <CalendarData searchParams={searchParams} />

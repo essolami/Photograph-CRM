@@ -39,6 +39,8 @@ export async function createUser(
   if (password.length < 8)
     return { error: "Password must be at least 8 characters." };
   if (!role) return { error: "Sélectionnez un rôle valide." };
+  const editorId = role === "MONTAGE" ? Number(data.get("editorId")) : null;
+  if (role === "MONTAGE" && (editorId === null || !Number.isSafeInteger(editorId) || editorId < 1)) return { error: "Sélectionnez le monteur associé à ce compte." };
   try {
     await prisma.user.create({
       data: {
@@ -47,6 +49,7 @@ export async function createUser(
         passwordHash: await hashPassword(password),
         isActive: true,
         role,
+        editorId,
         ...permissionsFor(role),
       },
     });
@@ -86,6 +89,8 @@ export async function updateUser(
     const isSelf = actor.id === id;
     const role = roleValue(data);
     if (!role) return { error: "Sélectionnez un rôle valide." };
+    const editorId = role === "MONTAGE" ? Number(data.get("editorId")) : null;
+    if (role === "MONTAGE" && (editorId === null || !Number.isSafeInteger(editorId) || editorId < 1)) return { error: "Sélectionnez le monteur associé à ce compte." };
     if (isSelf && role !== "ADMIN")
       return { error: "Le compte administrateur actuel doit rester administrateur." };
     await prisma.user.update({
@@ -93,6 +98,7 @@ export async function updateUser(
       data: {
         isActive: isSelf ? true : checked(data, "isActive"),
         role,
+        editorId,
         ...permissionsFor(role),
       },
     });

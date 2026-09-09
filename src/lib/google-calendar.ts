@@ -73,10 +73,13 @@ export async function syncClientCalendar(clientId: number) {
   const date = client.defenseDate.toISOString().slice(0, 10);
   const event = client.defenseTime
     ? (() => {
-        const start = `${date}T${client.defenseTime}:00`;
-        const endDate = new Date(`${date}T${client.defenseTime}:00Z`);
+        // Google requires RFC3339 date-times. Keep the local Casablanca time
+        // explicit instead of sending a timestamp without an offset.
+        const startDate = new Date(`${date}T${client.defenseTime}:00+01:00`);
+        const start = startDate.toISOString();
+        const endDate = new Date(startDate);
         endDate.setUTCHours(endDate.getUTCHours() + 1);
-        const end = endDate.toISOString().slice(0, 16);
+        const end = endDate.toISOString();
         return {
           summary: `Soutenance — ${client.name}`,
           description,
@@ -94,14 +97,22 @@ export async function syncClientCalendar(clientId: number) {
             .slice(0, 10),
         },
       };
-  if (client.googleEventId)
-    await calendar.events.update({
-      calendarId: connection.calendarId,
-      eventId: client.googleEventId,
-      requestBody: event,
-      sendUpdates: "all",
-    });
-  else {
+  if (client.googleEventId) {
+    try {
+      await calendar.events.update({
+        calendarId: connection.calendarId,
+        eventId: client.googleEventId,
+        requestBody: event,
+        sendUpdates: "all",
+      });
+      return true;
+    } catch (error) {
+      const status = (error as { code?: number }).code;
+      if (status !== 404) throw error;
+      // The event may belong to a previous connected calendar. Create it again.
+    }
+  }
+  {
     const created = await calendar.events.insert({
       calendarId: connection.calendarId,
       requestBody: event,

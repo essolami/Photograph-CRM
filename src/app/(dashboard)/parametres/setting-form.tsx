@@ -69,7 +69,7 @@ export function SettingForm({
           placeholder={section === "packs" ? "Ex. Pack 1" : "Saisissez un nom"}
         />
       </label>
-      {section === "photographes" && (
+      {(section === "photographes" || section === "monteurs") && (
         <label className="mt-4 block text-sm font-medium">
           Téléphone WhatsApp
           <input

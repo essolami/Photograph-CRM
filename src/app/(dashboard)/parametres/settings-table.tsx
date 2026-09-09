@@ -81,7 +81,7 @@ export function SettingsTable({
     ? 6
     : section === "supplements"
       ? 4
-      : section === "photographes"
+      : section === "photographes" || section === "monteurs"
         ? 4
         : 3;
   return (
@@ -161,7 +161,7 @@ export function SettingsTable({
                   Tarif (DH)
                 </th>
               )}
-              {section === "photographes" && (
+              {(section === "photographes" || section === "monteurs") && (
                 <th scope="col" className="px-5 py-3 font-medium">
                   Téléphone
                 </th>
@@ -217,7 +217,7 @@ export function SettingsTable({
                           {amount(record.price)}
                         </td>
                       )}
-                      {section === "photographes" && (
+                      {(section === "photographes" || section === "monteurs") && (
                         <td className="px-5 py-4 text-slate-600">
                           {record.phone || "Non renseigné"}
                         </td>

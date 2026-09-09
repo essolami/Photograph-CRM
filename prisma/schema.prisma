@@ -8,6 +8,7 @@ datasource db {
 }
 
 model Client {
+  tasks     EditorTask[]
   id        Int      @id @default(autoincrement())
   name      String
   email     String?  @unique
@@ -97,11 +98,31 @@ model Photographer {
 
 model Editor {
   clients Client[]
+  tasks   EditorTask[]
+  users   User[]
   id        Int      @id @default(autoincrement())
   name      String   @unique
+  phone     String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model EditorTask {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("Pas commencée")
+  dueDate     DateTime? @db.Date
+  editorId    Int
+  editor      Editor   @relation(fields: [editorId], references: [id], onDelete: Cascade)
+  clientId    Int?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([editorId, status])
+  @@index([clientId])
 }
 
 model User {
@@ -110,6 +131,8 @@ model User {
   email             String    @unique
   role              String    @default("USER")
   passwordHash      String
+  editorId          Int?
+  editor            Editor?   @relation(fields: [editorId], references: [id], onDelete: SetNull)
   isActive          Boolean   @default(true)
   canViewClients    Boolean   @default(true)
   canManageClients  Boolean   @default(false)

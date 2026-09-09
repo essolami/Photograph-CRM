@@ -18,7 +18,7 @@ export const sections = {
   },
   monteurs: {
     title: "Monteurs",
-    description: "Gérez les personnes chargées du montage.",
+    description: "Gérez les monteurs et leur numéro WhatsApp pour les contacter depuis les tâches.",
     kind: "editor",
   },
 } as const;

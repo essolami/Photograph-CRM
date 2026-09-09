@@ -11,12 +11,13 @@ const roles = [
   ["USER", "Utilisateur normal", "Consultation limitée sans téléphone ni montants"],
 ] as const;
 
-export function CreateUserForm() {
+export function CreateUserForm({ editors = [] }: { editors?: { id: number; name: string }[] }) {
   const toast = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("USER");
+  const [editorId, setEditorId] = useState("");
   const [state, action, pending] = useActionState(
     async (previous: { error?: string; success?: boolean }, data: FormData) => {
       const result = await createUser(previous, data);
@@ -25,6 +26,7 @@ export function CreateUserForm() {
         setEmail("");
         setPassword("");
         setRole("USER");
+        setEditorId("");
       }
       return result;
     },
@@ -80,6 +82,7 @@ export function CreateUserForm() {
           ))}
         </div>
       </fieldset>
+      {role === "MONTAGE" && <label className="mt-4 block"><span className="mb-2 block text-sm font-medium">Monteur associé</span><select className="field" name="editorId" value={editorId} onChange={event => setEditorId(event.target.value)} required><option value="">Sélectionner le monteur</option>{editors.map(editor => <option key={editor.id} value={editor.id}>{editor.name}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Ses tâches seront liées à ce profil.</span></label>}
       {state.error && (
         <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}

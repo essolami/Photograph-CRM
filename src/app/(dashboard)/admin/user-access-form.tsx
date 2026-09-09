@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { ActionIcon } from "../../action-icon";
 import { updateUser } from "./actions";
 import { useToast } from "../../toast";
@@ -11,17 +11,21 @@ type ManagedUser = {
   email: string;
   isActive: boolean;
   role: string;
+  editorId: number | null;
 };
 const roles = [["ADMIN", "Administrateur"], ["MANAGER", "Manager"], ["MONTAGE", "Montage"], ["USER", "Utilisateur normal"]] as const;
 
 export function UserAccessForm({
   user,
+  editors,
   isSelf,
 }: {
   user: ManagedUser;
+  editors: { id: number; name: string }[];
   isSelf: boolean;
 }) {
   const [state, action, pending] = useActionState(updateUser, {});
+  const [role, setRole] = useState(user.role || "USER");
   const toast = useToast();
   useEffect(() => {
     if (state.success) toast.success(`Access saved for ${user.name}.`);
@@ -54,10 +58,11 @@ export function UserAccessForm({
         </div>
         <label className="flex flex-1 items-center gap-2 text-sm font-semibold text-slate-600">
           Rôle
-          <select name="role" defaultValue={user.role || "USER"} disabled={isSelf} className="field max-w-52 py-2 text-xs">
+          <select name="role" value={role} onChange={event => setRole(event.target.value)} disabled={isSelf} className="field max-w-52 py-2 text-xs">
             {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
+        {role === "MONTAGE" && <label className="flex flex-1 items-center gap-2 text-sm font-semibold text-slate-600">Monteur<select name="editorId" defaultValue={user.editorId ?? ""} className="field max-w-52 py-2 text-xs" required><option value="">Sélectionner</option>{editors.map(editor => <option key={editor.id} value={editor.id}>{editor.name}</option>)}</select></label>}
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <input
             type="checkbox"

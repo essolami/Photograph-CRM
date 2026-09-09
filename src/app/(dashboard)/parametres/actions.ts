@@ -106,10 +106,15 @@ export async function saveSetting(_: State, data: FormData): Promise<State> {
             else await prisma.photographer.create({ data: values });
           }
           break;
-        case "editor":
-          if (id) await prisma.editor.update({ where: { id }, data: common });
-          else await prisma.editor.create({ data: common });
+        case "editor": {
+          const phone = String(data.get("phone") ?? "").trim();
+          if (phone && !/^\+?[\d\s().-]{6,30}$/.test(phone))
+            return { error: "Renseignez un numéro de téléphone valide." };
+          const values = { ...common, phone: phone || null };
+          if (id) await prisma.editor.update({ where: { id }, data: values });
+          else await prisma.editor.create({ data: values });
           break;
+        }
       }
     }
     revalidatePath("/parametres", "layout");

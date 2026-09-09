@@ -13,11 +13,13 @@ type SidebarUser = {
   canManageClients: boolean;
   canViewInvoices: boolean;
   canManageUsers: boolean;
+  role?: string;
 };
 
 const navItems = [
   { label: "Tableau de bord", icon: "dashboard", href: "/dashboard" },
   { label: "Toges", icon: "toges", href: "/toges" },
+  { label: "Montage", icon: "montage", href: "/montage" },
   { label: "Clients", icon: "clients", href: "/" },
 ];
 
@@ -52,6 +54,12 @@ function Icon({ name }: { name: string }) {
       <svg viewBox="0 0 24 24" className={common}>
         <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z" />
         <circle cx="12" cy="13" r="4" />
+      </svg>
+    );
+  if (name === "montage")
+    return (
+      <svg viewBox="0 0 24 24" className={common}>
+        <path d="M4 7h16v13H4z" /><path d="m8 7 1.5-3h5L16 7M8 11h8M8 15h5" />
       </svg>
     );
   return (
@@ -103,7 +111,7 @@ export function Sidebar({
   activePage = "clients",
 }: {
   user: SidebarUser;
-  activePage?: "dashboard" | "clients" | "toges" | "settings" | "admin";
+  activePage?: "dashboard" | "clients" | "toges" | "montage" | "settings" | "admin";
 }) {
   const pathname = usePathname();
   const currentPage = pathname.startsWith("/admin")
@@ -112,14 +120,16 @@ export function Sidebar({
       ? "dashboard"
       : pathname.startsWith("/toges")
         ? "toges"
+      : pathname.startsWith("/montage")
+        ? "montage"
       : pathname.startsWith("/parametres")
         ? "settings"
         : activePage;
   const visibleItems = navItems
     .filter(
       (item) =>
-        (item.icon !== "dashboard" && item.icon !== "toges") ||
-        user.canManageClients,
+        (item.icon !== "dashboard" && item.icon !== "toges" && item.icon !== "montage") ||
+        user.canManageClients || (item.icon === "montage" && user.role === "MONTAGE"),
     )
     .filter((item) => item.label !== "Clients" || user.canViewClients)
     .filter((item) => item.label !== "Factures" || user.canViewInvoices);
@@ -140,11 +150,12 @@ export function Sidebar({
               aria-current={
                 (item.icon === "clients" && currentPage === "clients") ||
                 (item.icon === "toges" && pathname.startsWith("/toges")) ||
+                (item.icon === "montage" && currentPage === "montage") ||
                 (item.icon === "dashboard" && currentPage === "dashboard")
                   ? "page"
                   : undefined
               }
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${(item.icon === "clients" && currentPage === "clients") || (item.icon === "toges" && pathname.startsWith("/toges")) || (item.icon === "dashboard" && currentPage === "dashboard") ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${(item.icon === "clients" && currentPage === "clients") || (item.icon === "toges" && pathname.startsWith("/toges")) || (item.icon === "montage" && currentPage === "montage") || (item.icon === "dashboard" && currentPage === "dashboard") ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/30" : "text-indigo-100/80 hover:bg-white/10 hover:text-white"}`}
             >
               <Icon name={item.icon} />
               {item.label}
