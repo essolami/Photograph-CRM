@@ -45,32 +45,32 @@ export async function syncClientCalendar(clientId: number) {
   if (!connection) return false;
   const client = await prisma.client.findUnique({
     where: { id: clientId },
-    include: { photographer: true, editor: true },
   });
   if (!client || !client.defenseDate) return false;
   const auth = googleOAuthClient();
   auth.setCredentials({ refresh_token: connection.refreshToken });
   const calendar = google.calendar({ version: "v3", auth });
-  const supplements = Array.isArray(client.supplements)
-    ? (client.supplements as { name: string }[])
-        .map((item) => item.name)
-        .join(", ")
-    : "Aucun";
+  const date = client.defenseDate.toISOString().slice(0, 10);
+  const [, month, day] = date.split("-");
+  const time = client.defenseTime
+    ? (() => {
+        const [hours, minutes] = client.defenseTime.split(":");
+        return `${Number(hours)}h${minutes === "00" ? "" : minutes}`;
+      })()
+    : null;
   const description = [
-    `Client : ${client.name}`,
-    `Téléphone : ${client.phone || "Non renseigné"}`,
-    `Pack : ${client.packName || "Non renseigné"}`,
-    `Faculté : ${client.facultyName || "Non renseignée"}`,
-    `Format : ${client.isDuo ? "Binôme" : "Solo"}`,
-    `Suppléments : ${supplements}`,
-    `Photographe : ${client.photographer?.name || "Non affecté"}`,
-    `Monteur : ${client.editor?.name || "Non affecté"}`,
-    `Statut : ${client.status}`,
-    client.comment ? `Commentaire : ${client.comment}` : "",
+    client.name,
+    `${day}/${month}${time ? ` à ${time}` : ""}`,
+    client.facultyName,
+    client.phone ? `Tel :${client.phone}` : "",
+    client.packName,
+    client.comment,
+    `Total:${client.total.toString()}dhs`,
+    `Avance:${client.advance.toString()}dhs`,
+    `Reste:${client.total.minus(client.advance).toString()}dhs`,
   ]
     .filter(Boolean)
     .join("\n");
-  const date = client.defenseDate.toISOString().slice(0, 10);
   const event = client.defenseTime
     ? (() => {
         // Google requires RFC3339 date-times. Keep the local Casablanca time
@@ -81,14 +81,14 @@ export async function syncClientCalendar(clientId: number) {
         endDate.setUTCHours(endDate.getUTCHours() + 1);
         const end = endDate.toISOString();
         return {
-          summary: `Soutenance — ${client.name}`,
+          summary: client.name,
           description,
           start: { dateTime: start, timeZone: "Africa/Casablanca" },
           end: { dateTime: end, timeZone: "Africa/Casablanca" },
         };
       })()
     : {
-        summary: `Soutenance — ${client.name}`,
+        summary: client.name,
         description,
         start: { date },
         end: {
