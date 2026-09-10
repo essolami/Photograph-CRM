@@ -26,6 +26,10 @@ export function SettingForm({
   priceRows?: PriceRow[];
   onSaved?: () => void;
 }) {
+  const [name, setName] = useState(record?.name ?? "");
+  const [isActive, setIsActive] = useState(
+    record?.isActive ?? section !== "supplements",
+  );
   const [rows, setRows] = useState(() =>
     priceRows.length
       ? priceRows.map((row) => ({ ...row, key: `existing_${row.id}` }))
@@ -65,7 +69,8 @@ export function SettingForm({
           name="name"
           required
           maxLength={120}
-          defaultValue={record?.name}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           placeholder={section === "packs" ? "Ex. Pack 1" : "Saisissez un nom"}
         />
       </label>
@@ -100,7 +105,16 @@ export function SettingForm({
                       name={`facultyName_${row.key}`}
                       required
                       maxLength={120}
-                      defaultValue={row.name}
+                      value={row.name}
+                      onChange={(event) =>
+                        setRows((current) =>
+                          current.map((item) =>
+                            item.key === row.key
+                              ? { ...item, name: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
                       placeholder="Ex. FMDC/FMPC"
                     />
                   </label>
@@ -133,7 +147,16 @@ export function SettingForm({
                         max="99999999.99"
                         step="0.01"
                         required
-                        defaultValue={row[key]}
+                        value={row[key] ?? ""}
+                        onChange={(event) =>
+                          setRows((current) =>
+                            current.map((item) =>
+                              item.key === row.key
+                                ? { ...item, [key]: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
                         placeholder="À renseigner"
                       />
                     </label>
@@ -184,7 +207,8 @@ export function SettingForm({
           <input
             type="checkbox"
             name="isActive"
-            defaultChecked={record?.isActive ?? section !== "supplements"}
+            checked={isActive}
+            onChange={(event) => setIsActive(event.target.checked)}
           />
           Actif
         </label>

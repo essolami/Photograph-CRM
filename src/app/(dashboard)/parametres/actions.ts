@@ -122,11 +122,25 @@ export async function saveSetting(_: State, data: FormData): Promise<State> {
     revalidateTag("clients", "max");
     return { success: "Enregistrement effectué." };
   } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    console.error("Setting save failed", { section, id, error });
+    const meta = (error as { meta?: { target?: string[] } } | null)?.meta;
+    if (code === "P2002" && meta?.target?.includes("name"))
+      return {
+        error:
+          kind === "pack"
+            ? "Ce nom de pack existe déjà. Fermez ce panneau, cliquez sur Modifier (crayon) sur le pack existant, puis sur + Ajouter une faculté."
+            : "Ce nom existe déjà. Choisissez un autre nom ou modifiez l’élément existant.",
+      };
+    if (code === "P2025" || code === "P2003")
+      return {
+        error: "Un élément a été supprimé. Actualisez la page puis réessayez.",
+      };
     if (error instanceof Error && error.message.startsWith("Saisissez"))
       return { error: error.message };
     return {
       error:
-        "Impossible d’enregistrer. Vérifiez que le nom n’existe pas déjà et que les éléments sélectionnés existent toujours.",
+        "Impossible d’enregistrer pour le moment. Réessayez ; si le problème persiste, contactez l’administrateur.",
     };
   }
 }
