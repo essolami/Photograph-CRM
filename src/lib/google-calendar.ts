@@ -58,12 +58,23 @@ export async function syncClientCalendar(clientId: number) {
         return `${Number(hours)}h${minutes === "00" ? "" : minutes}`;
       })()
     : null;
+  const supplementNames = Array.isArray(client.supplements)
+    ? client.supplements.flatMap((supplement) =>
+        supplement &&
+        typeof supplement === "object" &&
+        "name" in supplement &&
+        typeof supplement.name === "string" &&
+        supplement.name.trim()
+          ? [supplement.name.trim()]
+          : [],
+      )
+    : [];
   const description = [
     client.name,
     `${day}/${month}${time ? ` à ${time}` : ""}`,
     client.facultyName,
     client.phone ? `Tel :${client.phone}` : "",
-    client.packName,
+    [client.packName, ...supplementNames].filter(Boolean).join(" + "),
     client.comment,
     `Total:${client.total.toString()}dhs`,
     `Avance:${client.advance.toString()}dhs`,
