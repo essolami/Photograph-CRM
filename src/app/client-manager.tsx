@@ -701,6 +701,15 @@ export function ClientManager({
               </div>
             ))}
           </dl>
+          {canViewPrivate && (
+            <a
+              href={`/api/clients/${viewing.id}/quote`}
+              className="btn-secondary mt-4 flex w-full items-center justify-center"
+              download
+            >
+              Télécharger le devis (PDF)
+            </a>
+          )}
           {canManage && (
             <button
               type="button"
