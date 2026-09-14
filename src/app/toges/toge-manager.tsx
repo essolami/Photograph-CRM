@@ -28,7 +28,7 @@ export function TogeManager({ initialRows }: { initialRows: TogeRecord[] }) {
     const saleDate = row.createdAt.slice(0, 10);
     const balance = remaining(row);
     return normalize(`${row.customerName} ${row.phone} ${row.element}`).includes(normalize(query.trim()))
-      && (!location || row.location === location)
+      && (!location || (location === "none" ? !row.location : row.location === location))
       && (!color || row.color === color)
       && (!size || row.size === size)
       && (!element || row.element === element)
@@ -76,7 +76,7 @@ export function TogeManager({ initialRows }: { initialRows: TogeRecord[] }) {
         <label className="text-xs font-semibold text-slate-500">Élément<select className="field mt-2" value={element} onChange={(event) => setElement(event.target.value)}><option value="">Tous les éléments</option>{togeOptions.elements.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-500">Couleur<select className="field mt-2" value={color} onChange={(event) => setColor(event.target.value)}><option value="">Toutes les couleurs</option>{togeOptions.colors.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-500">Taille<select className="field mt-2" value={size} onChange={(event) => setSize(event.target.value)}><option value="">Toutes les tailles</option>{togeOptions.sizes.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        <label className="text-xs font-semibold text-slate-500">Localisation<select className="field mt-2" value={location} onChange={(event) => setLocation(event.target.value)}><option value="">Toutes les localisations</option>{togeOptions.locations.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-500">Localisation<select className="field mt-2" value={location} onChange={(event) => setLocation(event.target.value)}><option value="">Toutes les localisations</option><option value="none">Non renseignée</option>{togeOptions.locations.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label className="text-xs font-semibold text-slate-500">Livraison<select className="field mt-2" value={delivered} onChange={(event) => setDelivered(event.target.value)}><option value="">Toutes</option><option value="yes">Livrées</option><option value="no">Non livrées</option></select></label>
         <label className="text-xs font-semibold text-slate-500">Paiement<select className="field mt-2" value={payment} onChange={(event) => setPayment(event.target.value)}><option value="">Tous</option><option value="paid">Soldées</option><option value="due">Reste à payer</option></select></label>
       </div>

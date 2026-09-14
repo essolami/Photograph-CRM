@@ -237,8 +237,8 @@ async function saveClient(
       const togeColor = text(data, "togeColor");
       const togeSize = text(data, "togeSize");
       const togeLocation = text(data, "togeLocation");
-      if (togeSupplement && (!colors.includes(togeColor as (typeof colors)[number]) || !sizes.includes(togeSize as (typeof sizes)[number]) || !locations.includes(togeLocation as (typeof locations)[number])))
-        throw new InvalidClient("Choisissez une couleur, une taille et une localisation de toge valides.");
+      if (togeSupplement && (!colors.includes(togeColor as (typeof colors)[number]) || !sizes.includes(togeSize as (typeof sizes)[number]) || (togeLocation && !locations.includes(togeLocation as (typeof locations)[number]))))
+        throw new InvalidClient("Choisissez une couleur et une taille de toge valides.");
       if (photographerId) {
         const person = await tx.photographer.findUnique({
           where: { id: photographerId },

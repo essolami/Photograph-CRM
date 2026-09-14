@@ -45,7 +45,7 @@ export async function saveToge(_: TogeState, data: FormData): Promise<TogeState>
   if (!included(elements, element)) return { error: "Élément invalide." };
   if (!included(colors, color)) return { error: "Couleur invalide." };
   if (!included(sizes, size)) return { error: "Taille invalide." };
-  if (!included(locations, location)) return { error: "Localisation invalide." };
+  if (location && !included(locations, location)) return { error: "Localisation invalide." };
   try {
     const price = String(elementPrices[element as keyof typeof elementPrices]);
     const advance = money(data, "advance");

@@ -37,8 +37,8 @@ export function TogeForm({ toge, onDone }: { toge?: TogeRecord; onDone: (row?: T
   const select = (name: string, label: string, options: readonly string[], value: string) => (
     <label className="block text-sm font-semibold text-slate-700">
       {label}
-      <select className="field mt-2" name={name} defaultValue={name === "element" ? undefined : value} value={name === "element" ? element : undefined} onChange={name === "element" ? (event) => setElement(event.target.value) : undefined} required>
-        <option value="">Sélectionner</option>
+      <select className="field mt-2" name={name} defaultValue={name === "element" ? undefined : value} value={name === "element" ? element : undefined} onChange={name === "element" ? (event) => setElement(event.target.value) : undefined} required={name !== "location"}>
+        <option value="">{name === "location" ? "Non renseignée" : "Sélectionner"}</option>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>

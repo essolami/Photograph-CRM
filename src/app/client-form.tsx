@@ -257,9 +257,9 @@ export function ClientForm({
                 </select>
               </label>
               <label className="block text-sm font-semibold">
-                Localisation de la toge
-                <select className="field mt-2" name="togeLocation" defaultValue={client?.togeLocation ?? ""} required>
-                  <option value="">Choisir une localisation</option>
+                Localisation de la toge (facultatif)
+                <select className="field mt-2" name="togeLocation" defaultValue={client?.togeLocation ?? ""}>
+                  <option value="">Non renseignée</option>
                   {locations.map((location) => <option key={location} value={location}>{location}</option>)}
                 </select>
               </label>

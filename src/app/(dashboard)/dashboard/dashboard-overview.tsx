@@ -56,7 +56,7 @@ export function DashboardOverview({ clients, toges, tasks }: { clients: Client[]
     inRange(row.createdAt) && (!faculty || row.facultyName === faculty)
     && (!pack || row.packName === pack) && (!clientStatus || row.status === clientStatus),
   );
-  const filteredToges = toges.filter((row) => inRange(row.createdAt) && (!togeLocation || row.location === togeLocation));
+  const filteredToges = toges.filter((row) => inRange(row.createdAt) && (!togeLocation || (togeLocation === "none" ? !row.location : row.location === togeLocation)));
   const filteredTasks = tasks.filter((row) => inRange(row.dueDate || row.createdAt) && (!taskStatus || row.status === taskStatus));
   const standaloneToges = filteredToges.filter((row) => row.clientId === null);
   const clientRevenue = sum(filteredClients, (row) => row.total);
@@ -125,7 +125,7 @@ export function DashboardOverview({ clients, toges, tasks }: { clients: Client[]
       <div id="dashboard-filters" hidden={!showFilters} className="border-t border-slate-100 px-4 pb-5 pt-4 sm:px-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <label className="text-xs font-semibold text-slate-600">Statut · clients<select className={selectClass} value={clientStatus} onChange={(event) => setClientStatus(event.target.value)}><option value="">Tous les statuts</option>{unique([...projectStatuses, ...clients.map((row) => row.status)]).map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="text-xs font-semibold text-slate-600">Localisation · toges<select className={selectClass} value={togeLocation} onChange={(event) => setTogeLocation(event.target.value)}><option value="">Toutes les localisations</option>{togeOptions.locations.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <label className="text-xs font-semibold text-slate-600">Localisation · toges<select className={selectClass} value={togeLocation} onChange={(event) => setTogeLocation(event.target.value)}><option value="">Toutes les localisations</option><option value="none">Non renseignée</option>{togeOptions.locations.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label className="text-xs font-semibold text-slate-600">Statut · montage<select className={selectClass} value={taskStatus} onChange={(event) => setTaskStatus(event.target.value)}><option value="">Tous les statuts</option>{unique(tasks.map((row) => row.status)).map((value) => <option key={value}>{value}</option>)}</select></label>
         </div>
       </div>
