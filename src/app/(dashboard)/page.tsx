@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const getClientPageData = unstable_cache(
   async () =>
     Promise.all([
-      prisma.client.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.client.findMany({ orderBy: { createdAt: "desc" }, include: { togeSale: true } }),
       prisma.pack.findMany({
         where: { isActive: true },
         include: {
@@ -85,6 +85,10 @@ async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUse
     await getClientPageData();
   const records = clients.map((c) => ({
     ...c,
+    togeColor: c.togeSale?.color ?? null,
+    togeSize: c.togeSale?.size ?? null,
+    togeLocation: c.togeSale?.location ?? null,
+    togeSale: undefined,
     phone: privateData ? c.phone : null,
     email: privateData ? c.email : null,
     defenseDate: c.defenseDate

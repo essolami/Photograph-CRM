@@ -10,6 +10,7 @@ import {
   type ClientRecord,
   type ClientCatalog,
 } from "@/lib/client-data";
+import { colors, locations, sizes } from "./toges/options";
 export function ClientForm({
   client,
   catalog,
@@ -76,6 +77,7 @@ export function ClientForm({
     ) ?? []),
   ];
   const chosen = supplements.filter((s) => selected.includes(s.id));
+  const hasToge = chosen.some((s) => s.name.trim().toLocaleLowerCase("fr") === "toge");
   let remaining: string | null = null;
   let total: string | null = null,
     calculationError = "";
@@ -237,6 +239,31 @@ export function ClientForm({
             <p className="text-sm text-slate-500">
               Aucun supplément disponible.
             </p>
+          )}
+          {hasToge && (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">
+                Couleur de la toge
+                <select className="field mt-2" name="togeColor" defaultValue={client?.togeColor ?? ""} required>
+                  <option value="">Choisir une couleur</option>
+                  {colors.map((color) => <option key={color} value={color}>{color}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold">
+                Taille de la toge
+                <select className="field mt-2" name="togeSize" defaultValue={client?.togeSize ?? ""} required>
+                  <option value="">Choisir une taille</option>
+                  {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold">
+                Localisation de la toge
+                <select className="field mt-2" name="togeLocation" defaultValue={client?.togeLocation ?? ""} required>
+                  <option value="">Choisir une localisation</option>
+                  {locations.map((location) => <option key={location} value={location}>{location}</option>)}
+                </select>
+              </label>
+            </div>
           )}
         </div>
       </fieldset>

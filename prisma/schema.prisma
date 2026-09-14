@@ -9,6 +9,7 @@ datasource db {
 
 model Client {
   tasks     EditorTask[]
+  togeSale  TogeSale?
   id        Int      @id @default(autoincrement())
   name      String
   email     String?  @unique
@@ -40,6 +41,8 @@ model Client {
 
 model TogeSale {
   id           Int      @id @default(autoincrement())
+  clientId     Int?     @unique
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   customerName String
   phone        String
   element      String

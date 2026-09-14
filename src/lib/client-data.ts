@@ -21,6 +21,9 @@ export type ClientRecord = {
   isDuo: boolean;
   basePrice: string;
   supplements: SupplementChoice[];
+  togeColor: string | null;
+  togeSize: string | null;
+  togeLocation: string | null;
   discount: string;
   total: string;
   advance: string;

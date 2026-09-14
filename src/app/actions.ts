@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { syncClientCalendar } from "@/lib/google-calendar";
+import { colors, locations, sizes } from "./toges/options";
 import {
   cents,
   totalPrice,
@@ -232,6 +233,12 @@ async function saveClient(
           price: item.price.toString(),
         });
       }
+      const togeSupplement = supplements.find((item) => item.name.trim().toLocaleLowerCase("fr") === "toge");
+      const togeColor = text(data, "togeColor");
+      const togeSize = text(data, "togeSize");
+      const togeLocation = text(data, "togeLocation");
+      if (togeSupplement && (!colors.includes(togeColor as (typeof colors)[number]) || !sizes.includes(togeSize as (typeof sizes)[number]) || !locations.includes(togeLocation as (typeof locations)[number])))
+        throw new InvalidClient("Choisissez une couleur, une taille et une localisation de toge valides.");
       if (photographerId) {
         const person = await tx.photographer.findUnique({
           where: { id: photographerId },
@@ -284,6 +291,25 @@ async function saveClient(
         const created = await tx.client.create({ data: values });
         savedClientId = created.id;
       }
+      if (togeSupplement) {
+        const togeValues = {
+          customerName: name,
+          phone,
+          element: "TOGE COMPLET",
+          color: togeColor,
+          size: togeSize,
+          location: togeLocation,
+          price: togeSupplement.price,
+          advance: "0",
+        };
+        await tx.togeSale.upsert({
+          where: { clientId: savedClientId },
+          create: { ...togeValues, clientId: savedClientId },
+          update: togeValues,
+        });
+      } else if (id) {
+        await tx.togeSale.deleteMany({ where: { clientId: id } });
+      }
     });
     try {
       await syncClientCalendar(savedClientId!);
@@ -291,6 +317,7 @@ async function saveClient(
       console.error("Google Calendar sync failed", calendarError);
     }
     revalidatePath("/");
+    revalidatePath("/toges");
     revalidateTag("clients", "max");
     return { success: true };
   } catch (error) {

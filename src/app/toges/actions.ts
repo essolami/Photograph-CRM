@@ -16,6 +16,7 @@ export type SavedToge = {
   price: string;
   advance: string;
   isDelivered: boolean;
+  createdAt: string;
 };
 export type TogeState = { error?: string; success?: boolean; row?: SavedToge };
 
@@ -55,7 +56,7 @@ export async function saveToge(_: TogeState, data: FormData): Promise<TogeState>
       ? await prisma.togeSale.update({ where: { id }, data: payload })
       : await prisma.togeSale.create({ data: payload });
     revalidatePath("/toges");
-    return { success: true, row: { ...saved, price: saved.price.toString(), advance: saved.advance.toString() } };
+    return { success: true, row: { ...saved, price: saved.price.toString(), advance: saved.advance.toString(), createdAt: saved.createdAt.toISOString() } };
   } catch (error) {
     return { error: error instanceof Error && error.message === "Montant invalide." ? error.message : "Impossible d’enregistrer cette vente." };
   }

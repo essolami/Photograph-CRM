@@ -15,6 +15,7 @@ export type TogeRecord = {
   price: string;
   advance: string;
   isDelivered: boolean;
+  createdAt: string;
 };
 
 export function TogeForm({ toge, onDone }: { toge?: TogeRecord; onDone: (row?: TogeRecord) => void }) {

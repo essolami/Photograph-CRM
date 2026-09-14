@@ -7,5 +7,5 @@ export default async function TogesPage() {
   const user = await requireUser();
   if (!user.canManageClients) redirect("/forbidden");
   const rows = await prisma.togeSale.findMany({ orderBy: { createdAt: "desc" } });
-  return <TogeManager initialRows={rows.map((row) => ({ ...row, price: row.price.toString(), advance: row.advance.toString() }))} />;
+  return <TogeManager initialRows={rows.map((row) => ({ ...row, price: row.price.toString(), advance: row.advance.toString(), createdAt: row.createdAt.toISOString() }))} />;
 }
