@@ -384,6 +384,39 @@ export async function updateClientQuick(
   }
 }
 
+export async function updateClientPaid(
+  id: number,
+  isPaid: boolean,
+): Promise<ClientActionState> {
+  await requirePermission("canManageClients");
+  if (!Number.isSafeInteger(id) || id < 1)
+    return { error: "Client invalide." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      const client = await tx.client.findUnique({
+        where: { id },
+        select: { total: true },
+      });
+      if (!client) throw new InvalidClient("Client introuvable.");
+      await tx.client.update({
+        where: { id },
+        data: { advance: isPaid ? client.total : 0 },
+      });
+    });
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidateTag("clients", "max");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof InvalidClient
+          ? error.message
+          : "Impossible de modifier le paiement.",
+    };
+  }
+}
+
 export async function updateClientDrive(
   _state: ClientActionState,
   data: FormData,

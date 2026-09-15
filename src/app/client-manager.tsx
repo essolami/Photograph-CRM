@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ActionIcon } from "./action-icon";
-import { deleteClient, updateClientQuick } from "./actions";
+import { deleteClient, updateClientPaid, updateClientQuick } from "./actions";
 import { ClientForm, DriveLinkForm } from "./client-form";
 import { ClientImport } from "./client-import";
 import { ClientExport } from "./client-export";
@@ -171,6 +171,30 @@ export function ClientManager({
       else {
         setError("");
         setNotice("Mise à jour enregistrée.");
+      }
+    });
+  }
+  function togglePaid(client: ClientRecord, isPaid: boolean) {
+    const previousAdvance = client.advance;
+    setOptimistic((current) => ({
+      ...current,
+      [client.id]: {
+        ...current[client.id],
+        advance: isPaid ? client.total : "0",
+      },
+    }));
+    setError("");
+    setNotice("");
+    startUpdate(async () => {
+      const result = await updateClientPaid(client.id, isPaid);
+      if (result.error) {
+        setOptimistic((current) => ({
+          ...current,
+          [client.id]: { ...current[client.id], advance: previousAdvance },
+        }));
+        setError(result.error);
+      } else {
+        setNotice(isPaid ? "Paiement marqué comme soldé." : "Paiement marqué comme non soldé.");
       }
     });
   }
@@ -574,7 +598,7 @@ export function ClientManager({
                   )}
                 </td>
 
-                <td className="px-4 font-bold whitespace-nowrap tabular-nums">
+                <td className="px-4 font-bold whitespace-nowrap tabular-nums" onClick={(event) => event.stopPropagation()}>
                   {canViewPrivate ? (
                     <>
                       <p>{formatDh(c.total)}</p>
@@ -583,6 +607,22 @@ export function ClientManager({
                           {Number(c.advance) >= Number(c.total) ? "Soldé" : `Reste ${formatDh(remainingPrice(c.total, c.advance))}`}
                         </p>
                       ) : null}
+                      {canManage && c.total.trim() && (
+                        <label
+                          className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-600"
+                          title={Number(c.advance) >= Number(c.total) ? "Marquer comme non soldé" : "Marquer comme soldé"}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded accent-emerald-600"
+                            checked={Number(c.advance) >= Number(c.total)}
+                            disabled={updating}
+                            aria-label={`Paiement soldé pour ${c.name}`}
+                            onChange={(event) => togglePaid(c, event.target.checked)}
+                          />
+                          Payé
+                        </label>
+                      )}
                     </>
                   ) : <span className="text-slate-400">—</span>}
                 </td>
