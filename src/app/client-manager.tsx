@@ -6,6 +6,7 @@ import { deleteClient, updateClientQuick } from "./actions";
 import { ClientForm, DriveLinkForm } from "./client-form";
 import { ClientImport } from "./client-import";
 import { ClientExport } from "./client-export";
+import { ClientPdfExport } from "./client-pdf-export";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
 import {
   totalPrice,
@@ -277,22 +278,7 @@ export function ClientManager({
               <ClientExport clients={displayClients} catalog={catalog} />
             )}
             {canExport && (
-              <a
-                href="/api/clients/today-pdf"
-                className="icon-action"
-                title="Télécharger le PDF des soutenances du jour"
-                aria-label="Télécharger le PDF des soutenances du jour"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 fill-none stroke-current stroke-[1.8]"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />
-                </svg>
-              </a>
+              <ClientPdfExport />
             )}
           </div>
 

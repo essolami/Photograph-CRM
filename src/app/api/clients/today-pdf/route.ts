@@ -7,16 +7,31 @@ export const runtime = "nodejs";
 const money = (value: string) =>
   `${new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 2 }).format(Number(value))} DH`;
 const dateValue = () => new Date().toISOString().slice(0, 10);
+const validDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+const shortDate = (value: string) => `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}`;
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user || !user.canManageUsers)
     return new Response("Non autorisé", { status: 403 });
-  const today = dateValue();
+  const url = new URL(request.url);
+  const from = url.searchParams.get("from") || dateValue();
+  const to = url.searchParams.get("to") || from;
+  if (!validDate(from) || !validDate(to) || to < from)
+    return new Response("Période invalide", { status: 400 });
   const clients = await prisma.client.findMany({
-    where: { defenseDate: new Date(`${today}T00:00:00.000Z`) },
+    where: {
+      defenseDate: {
+        gte: new Date(`${from}T00:00:00.000Z`),
+        lte: new Date(`${to}T00:00:00.000Z`),
+      },
+    },
     include: { photographer: true },
-    orderBy: { defenseDate: "asc" },
+    orderBy: [{ defenseDate: "asc" }, { name: "asc" }],
   });
   const document = new PDFDocument({
     size: "A4",
@@ -45,15 +60,13 @@ export async function GET() {
     .fillColor("#172554")
     .font("Helvetica-Bold")
     .fontSize(18)
-    .text("Soutenances du jour", 28, y);
+    .text(from === to ? `Soutenances du ${shortDate(from)}` : `Soutenances du ${shortDate(from)} au ${shortDate(to)}`, 28, y);
   document
     .font("Helvetica")
     .fontSize(9)
     .fillColor("#64748b")
     .text(
-      new Intl.DateTimeFormat("fr-FR", { dateStyle: "full" }).format(
-        new Date(),
-      ),
+      `${clients.length} soutenance${clients.length > 1 ? "s" : ""}`,
       28,
       y + 25,
     );
@@ -109,7 +122,7 @@ export async function GET() {
     const payment = `Total: ${money(total)}\nAvance: ${money(advance)}\nReste: ${money((Number(total) - Number(advance)).toFixed(2))}`;
     const values = [
       client.name,
-      `${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`,
+      client.defenseDate ? shortDate(client.defenseDate.toISOString().slice(0, 10)) : "",
       client.packName ?? "",
       supplements,
       client.facultyName ?? "",
@@ -128,13 +141,13 @@ export async function GET() {
       .fillColor("#64748b")
       .font("Helvetica")
       .fontSize(11)
-      .text("Aucune soutenance prévue aujourd’hui.", 33, y + 18);
+      .text(from === to ? "Aucune soutenance prévue à cette date." : "Aucune soutenance prévue pendant cette période.", 33, y + 18);
   document.end();
   const pdf = await finished;
   return new Response(pdf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="soutenances-${today}.pdf"`,
+      "Content-Disposition": `attachment; filename="soutenances-${from}${from === to ? "" : `-au-${to}`}.pdf"`,
       "Content-Length": String(pdf.length),
     },
   });
