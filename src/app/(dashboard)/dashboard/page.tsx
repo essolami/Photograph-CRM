@@ -11,16 +11,19 @@ const togeSelect = {
   price: true, advance: true, isDelivered: true,
 } as const;
 
+// Les colonnes ajoutées après coup peuvent manquer si une migration n'est pas
+// encore déployée : on retombe alors sur la sélection d'origine.
 async function getToges() {
   try {
-    return await prisma.togeSale.findMany({
-      select: { ...togeSelect, clientId: true },
+    const rows = await prisma.togeSale.findMany({
+      select: { ...togeSelect, discount: true, clientId: true, client: { select: { defenseDate: true } } },
       orderBy: { createdAt: "desc" },
     });
+    return rows.map(({ client, ...row }) => ({ ...row, defenseDate: client?.defenseDate ?? null }));
   } catch (error) {
     if (!(error && typeof error === "object" && "code" in error && error.code === "P2022")) throw error;
     const rows = await prisma.togeSale.findMany({ select: togeSelect, orderBy: { createdAt: "desc" } });
-    return rows.map((row) => ({ ...row, clientId: null }));
+    return rows.map((row) => ({ ...row, discount: null, clientId: null, defenseDate: null }));
   }
 }
 
@@ -63,7 +66,10 @@ export default async function DashboardPage() {
     }))}
     toges={toges.map((row) => ({
       ...row, createdAt: row.createdAt.toISOString().slice(0, 10),
-      price: Number(row.price), advance: Number(row.advance),
+      defenseDate: row.defenseDate?.toISOString().slice(0, 10) ?? "",
+      // Le prix net est ce que le client doit après réduction.
+      price: Number(row.price) - Number(row.discount ?? 0),
+      discount: Number(row.discount ?? 0), advance: Number(row.advance),
     }))}
     tasks={tasks.map((row) => ({
       id: row.id, title: row.title, status: row.status,

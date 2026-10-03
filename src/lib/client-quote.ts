@@ -19,6 +19,8 @@ export type ClientQuote = {
   isDuo: boolean;
   basePrice: string;
   supplements: SupplementChoice[];
+  extraLabel: string | null;
+  extraAmount: string;
   discount: string;
   total: string;
   advance: string;
@@ -159,6 +161,14 @@ export async function createClientQuote(client: ClientQuote) {
       name: `Supplément : ${item.name}`,
       price: item.price,
     })),
+    ...(cents(client.extraAmount || "0") > 0
+      ? [
+          {
+            name: `Service supplémentaire : ${client.extraLabel?.trim() || "Prestation complémentaire"}`,
+            price: client.extraAmount,
+          },
+        ]
+      : []),
   ];
   for (const [index, item] of items.entries()) {
     doc.font(index === 0 ? "Helvetica-Bold" : "Helvetica").fontSize(10);

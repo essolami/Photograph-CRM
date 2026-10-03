@@ -21,6 +21,8 @@ export type ClientRecord = {
   isDuo: boolean;
   basePrice: string;
   supplements: SupplementChoice[];
+  extraLabel: string | null;
+  extraAmount: string;
   togeColor: string | null;
   togeSize: string | null;
   togeLocation: string | null;
@@ -65,10 +67,13 @@ export function totalPrice(
   base: string,
   supplements: SupplementChoice[],
   discount: string,
+  // Service facturé en plus du pack et des suppléments du catalogue.
+  extraAmount = "0",
 ) {
   const total =
     cents(base) +
-    supplements.reduce((sum, item) => sum + cents(item.price), 0) -
+    supplements.reduce((sum, item) => sum + cents(item.price), 0) +
+    cents(extraAmount || "0") -
     cents(discount);
   if (total < 0)
     throw new Error("La réduction dépasse le montant de la prestation.");

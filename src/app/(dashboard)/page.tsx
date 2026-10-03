@@ -97,6 +97,9 @@ async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUse
     defenseTime: c.defenseTime,
     basePrice: privateData ? c.basePrice.toString() : "",
     supplements: c.supplements as SupplementChoice[],
+    extraLabel: c.extraLabel ?? null,
+    // La colonne peut manquer tant que la migration n'est pas appliquée.
+    extraAmount: privateData ? (c.extraAmount?.toString() ?? "0") : "",
     discount: privateData ? c.discount.toString() : "",
     total: privateData ? c.total.toString() : "",
     advance: privateData ? c.advance.toString() : "",

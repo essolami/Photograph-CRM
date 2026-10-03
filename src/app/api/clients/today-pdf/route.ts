@@ -31,7 +31,13 @@ export async function GET(request: Request) {
       },
     },
     include: { photographer: true },
-    orderBy: [{ defenseDate: "asc" }, { name: "asc" }],
+    // Les soutenances se lisent dans l'ordre de passage : par date, puis par
+    // heure. Les dossiers sans heure ferment la journée.
+    orderBy: [
+      { defenseDate: "asc" },
+      { defenseTime: { sort: "asc", nulls: "last" } },
+      { name: "asc" },
+    ],
   });
   const document = new PDFDocument({
     size: "A4",
@@ -47,7 +53,7 @@ export async function GET(request: Request) {
   const columns = [120, 105, 82, 155, 85, 145, 93];
   const headers = [
     "Nom prénom",
-    "Date",
+    "Date et heure",
     "Pack",
     "Suppléments",
     "Faculté",
@@ -122,7 +128,9 @@ export async function GET(request: Request) {
     const payment = `Total: ${money(total)}\nAvance: ${money(advance)}\nReste: ${money((Number(total) - Number(advance)).toFixed(2))}`;
     const values = [
       client.name,
-      client.defenseDate ? shortDate(client.defenseDate.toISOString().slice(0, 10)) : "",
+      client.defenseDate
+        ? `${shortDate(client.defenseDate.toISOString().slice(0, 10))}\n${client.defenseTime ? `${client.defenseTime}` : "Heure à définir"}`
+        : "",
       client.packName ?? "",
       supplements,
       client.facultyName ?? "",

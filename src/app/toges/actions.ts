@@ -14,6 +14,7 @@ export type SavedToge = {
   size: string;
   location: string;
   price: string;
+  discount: string;
   advance: string;
   isDelivered: boolean;
   createdAt: string;
@@ -48,15 +49,20 @@ export async function saveToge(_: TogeState, data: FormData): Promise<TogeState>
   if (location && !included(locations, location)) return { error: "Localisation invalide." };
   try {
     const price = String(elementPrices[element as keyof typeof elementPrices]);
+    // La réduction est un montant en dirhams, retiré du prix du catalogue.
+    const discount = value(data, "discount") ? money(data, "discount") : "0";
+    if (Number(discount) > Number(price)) return { error: "La réduction ne peut pas dépasser le prix." };
     const advance = money(data, "advance");
-    if (Number(advance) > Number(price)) return { error: "L’avance ne peut pas dépasser le prix." };
+    if (Number(advance) > Number(price) - Number(discount))
+      return { error: "L’avance ne peut pas dépasser le prix après réduction." };
     const isDelivered = data.get("isDelivered") === "on";
-    const payload = { customerName, phone, element, color, size, location, price, advance, isDelivered };
+    const payload = { customerName, phone, element, color, size, location, price, discount, advance, isDelivered };
     const saved = id && Number.isSafeInteger(id)
       ? await prisma.togeSale.update({ where: { id }, data: payload })
       : await prisma.togeSale.create({ data: payload });
     revalidatePath("/toges");
-    return { success: true, row: { ...saved, price: saved.price.toString(), advance: saved.advance.toString(), createdAt: saved.createdAt.toISOString() } };
+    revalidatePath("/dashboard");
+    return { success: true, row: { ...saved, price: saved.price.toString(), discount: saved.discount.toString(), advance: saved.advance.toString(), createdAt: saved.createdAt.toISOString() } };
   } catch (error) {
     return { error: error instanceof Error && error.message === "Montant invalide." ? error.message : "Impossible d’enregistrer cette vente." };
   }

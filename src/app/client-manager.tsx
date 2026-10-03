@@ -98,6 +98,21 @@ export function ClientManager({
       : digits;
     return normalized.length >= 10 ? `https://wa.me/${normalized}` : null;
   };
+  // Le photographe encaisse sur place : il reçoit uniquement le reste à
+  // récupérer, jamais le total ni l'avance du dossier.
+  const paymentLines = (client: ClientRecord) => {
+    if (!client.total) return [];
+    try {
+      const remaining = remainingPrice(client.total, client.advance || "0");
+      return [
+        Number(remaining) > 0
+          ? `Reste à encaisser auprès du client : ${formatDh(remaining)}`
+          : "Dossier soldé : rien à encaisser.",
+      ];
+    } catch {
+      return [];
+    }
+  };
   const photographerWhatsAppUrl = (client: ClientRecord) => {
     const photographer = catalog.photographers.find(
       (person) => person.id === client.photographerId,
@@ -109,11 +124,12 @@ export function ClientManager({
       "Voici les informations de votre séance :",
       `Client : ${client.name}`,
       `Téléphone : ${client.phone || "Non renseigné"}`,
-      `Soutenance : ${dateLabel(client.defenseDate)}`,
+      `Soutenance : ${dateLabel(client.defenseDate)}${client.defenseTime ? ` à ${client.defenseTime}` : ""}`,
       `Pack : ${client.packName || "Non renseigné"}`,
       `Faculté : ${client.facultyName || "Non renseignée"}`,
       `Format : ${client.isDuo ? "Binôme" : "Solo"}`,
       `Suppléments : ${client.supplements.length ? client.supplements.map((item) => item.name).join(", ") : "Aucun"}`,
+      ...paymentLines(client),
       client.comment ? `Commentaire : ${client.comment}` : "",
     ]
       .filter(Boolean)
@@ -210,8 +226,9 @@ export function ClientManager({
     const rate = pack?.rates.find((item) => item.facultyId === facultyId);
     const chosen = catalog.supplements.filter((item) => data.getAll("supplementId").map(String).includes(String(item.id)));
     const base = rate ? (isDuo ? rate.duoPrice : rate.soloPrice) : current.basePrice;
+    const extraAmount = String(data.get("extraAmount") ?? "0") || "0";
     let total = current.total;
-    try { total = totalPrice(base, chosen, String(data.get("discount") ?? "0")); } catch { /* server will report the validation error */ }
+    try { total = totalPrice(base, chosen, String(data.get("discount") ?? "0"), extraAmount); } catch { /* server will report the validation error */ }
     const photographerId = data.get("photographerId") ? Number(data.get("photographerId")) : null;
     const editorId = data.get("editorId") ? Number(data.get("editorId")) : null;
     setOptimistic((patches) => ({
@@ -228,6 +245,8 @@ export function ClientManager({
         isDuo,
         basePrice: base,
         supplements: chosen,
+        extraLabel: String(data.get("extraLabel") ?? "") || null,
+        extraAmount,
         discount: String(data.get("discount") ?? "0"),
         total,
         advance: String(data.get("advance") ?? "0"),
@@ -703,6 +722,9 @@ export function ClientManager({
               Suppléments: viewing.supplements.length
                 ? viewing.supplements.map((s) => `${s.name} (${formatDh(s.price)})`).join(", ")
                 : "Aucun",
+              "Service supplémentaire": canViewPrivate && Number(viewing.extraAmount || 0) > 0
+                ? `${viewing.extraLabel?.trim() || "Service supplémentaire"} (${formatDh(viewing.extraAmount)})`
+                : null,
               "Total à payer": canViewPrivate ? formatDh(viewing.total) : null,
               "Avance versée": canViewPrivate ? formatDh(viewing.advance) : null,
               "Reste à payer": canViewPrivate && viewing.total.trim() && viewing.advance.trim()
@@ -715,7 +737,7 @@ export function ClientManager({
               "Lien Drive": viewing.driveUrl,
               Commentaire: viewing.comment,
               "Gain brut": canViewPrivate && viewing.grossProfit ? formatDh(viewing.grossProfit) : null,
-            }).filter(([label]) => canViewPrivate || !["Téléphone", "E-mail", "Total à payer", "Avance versée", "Reste à payer", "Réduction", "Gain brut"].includes(label)).map(([label, value]) => (
+            }).filter(([label]) => canViewPrivate || !["Téléphone", "E-mail", "Service supplémentaire", "Total à payer", "Avance versée", "Reste à payer", "Réduction", "Gain brut"].includes(label)).map(([label, value]) => (
               <div
                 key={label}
                 className={`flex min-h-10 items-baseline justify-between gap-3 border-b border-slate-100 py-2 ${label === "Suppléments" || label === "Commentaire" ? "sm:col-span-2 flex-col items-start gap-1" : ""}`}
@@ -781,6 +803,9 @@ export function ClientManager({
                   Suppléments: editing.supplements
                     .map((s) => `${s.name} (${formatDh(s.price)})`)
                     .join(", "),
+                  "Service supplémentaire": Number(editing.extraAmount || 0) > 0
+                    ? `${editing.extraLabel?.trim() || "Service supplémentaire"} (${formatDh(editing.extraAmount)})`
+                    : null,
                   "Total à payer": formatDh(editing.total),
                   "Avance versée": formatDh(editing.advance),
                   "Reste à payer": editing.total.trim() && editing.advance.trim()

@@ -27,6 +27,8 @@ export async function GET(
     supplements: Array.isArray(client.supplements)
       ? (client.supplements as SupplementChoice[])
       : [],
+    extraLabel: client.extraLabel ?? null,
+    extraAmount: client.extraAmount?.toString() ?? "0",
     discount: client.discount.toString(),
     total: client.total.toString(),
     advance: client.advance.toString(),

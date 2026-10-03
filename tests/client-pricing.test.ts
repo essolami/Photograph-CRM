@@ -10,6 +10,13 @@ test("calcul solo et binôme avec suppléments et réduction", () => {
   assert.equal(totalPrice("1400", extras, "100"), "1730.00");
   assert.equal(totalPrice("2100", extras, "100"), "2430.00");
 });
+test("service supplémentaire ajouté au total", () => {
+  const extras = [{ id: 1, name: "Toge", price: "400" }];
+  assert.equal(totalPrice("1400", extras, "0", "250"), "2050.00");
+  assert.equal(totalPrice("1400", extras, "100", "250.50"), "1950.50");
+  assert.equal(totalPrice("1400", extras, "0", "0"), "1800.00");
+  assert.equal(totalPrice("1400", extras, "0"), "1800.00");
+});
 test("centimes exacts et virgule française", () => {
   assert.equal(cents("12,35"), 1235);
   assert.equal(

@@ -168,9 +168,14 @@ async function saveClient(
     const advance = text(data, "advance") || "0";
     const discount = text(data, "discount") || "0",
       grossProfit = text(data, "grossProfit");
+    const extraAmount = text(data, "extraAmount") || "0";
+    const extraLabel = text(data, "extraLabel");
+    if (extraLabel.length > 120)
+      throw new InvalidClient("Le libellé du service supplémentaire est trop long.");
     try {
       cents(discount);
       cents(advance);
+      cents(extraAmount);
       if (grossProfit) cents(grossProfit);
     } catch {
       throw new InvalidClient(
@@ -256,7 +261,7 @@ async function saveClient(
       }
       let total: string;
       try {
-        total = totalPrice(basePrice, supplements, discount);
+        total = totalPrice(basePrice, supplements, discount, extraAmount);
         remainingPrice(total, advance);
       } catch (error) {
         throw new InvalidClient((error as Error).message);
@@ -274,6 +279,8 @@ async function saveClient(
         isDuo,
         basePrice,
         supplements,
+        extraLabel: extraLabel || null,
+        extraAmount: extraAmount.replace(",", "."),
         discount: discount.replace(",", "."),
         total,
         advance: advance.replace(",", "."),

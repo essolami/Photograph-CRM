@@ -28,6 +28,8 @@ export function ClientExport({ clients, catalog }: { clients: ClientRecord[]; ca
         "📍 Roll UP": has("roll") || has("rollup"),
         "🎁 Cadeau": has("cadeau"),
         "💰 Total Suppléments": supplementTotal,
+        "🧾 Service supplémentaire": client.extraLabel ?? "",
+        "💰 Montant service supplémentaire": Number(client.extraAmount || 0),
         "💸 Réduction": Number(client.discount || 0),
         "💵 Total à payer": Number(client.total || 0),
         "💳 Avance": Number(client.advance || 0),

@@ -18,6 +18,8 @@ const client: ClientQuote = {
     { id: 1, name: "Toge", price: "400" },
     { id: 2, name: "Couverture et copie", price: "159" },
   ],
+  extraLabel: null,
+  extraAmount: "0",
   discount: "100",
   total: "3459",
   advance: "1500",
@@ -86,6 +88,20 @@ test("quote supports missing appointment, no supplements and fully paid orders",
   assert.ok(text.includes("Aucun suppl"));
   assert.ok(text.includes("0,00 DH"));
   assert.ok(!text.includes("null"));
+});
+
+test("quote lists the extra service with its own line", async () => {
+  const text = pdfText(
+    await createClientQuote({
+      ...client,
+      extraLabel: "Retouches avancées",
+      extraAmount: "250",
+      total: "3709",
+    }),
+  );
+  assert.ok(text.includes("Retouches avanc"));
+  assert.ok(text.includes("250,00 DH"));
+  assert.ok(text.includes("3.709,00 DH"));
 });
 
 test("long orders retain every supplement and balance across pages", async () => {

@@ -2,7 +2,6 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createClient, updateClient, updateClientDrive } from "./actions";
 import {
-  cents,
   formatDh,
   totalPrice,
   remainingPrice,
@@ -29,6 +28,8 @@ export function ClientForm({
   const [isDuo, setIsDuo] = useState(client?.isDuo ?? false);
   const [advance, setAdvance] = useState(client?.advance ?? "0");
   const [discount, setDiscount] = useState(client?.discount ?? "0");
+  const [extraAmount, setExtraAmount] = useState(client?.extraAmount ?? "0");
+  const [extraLabel, setExtraLabel] = useState(client?.extraLabel ?? "");
   const [selected, setSelected] = useState(
     client?.supplements.map((s) => s.id) ?? [],
   );
@@ -80,10 +81,12 @@ export function ClientForm({
   const hasToge = chosen.some((s) => s.name.trim().toLocaleLowerCase("fr") === "toge");
   let remaining: string | null = null;
   let total: string | null = null,
+    subtotal: string | null = null,
     calculationError = "";
   if (base !== null) {
     try {
-      total = totalPrice(base, chosen, discount || "0");
+      subtotal = totalPrice(base, chosen, "0", extraAmount || "0");
+      total = totalPrice(base, chosen, discount || "0", extraAmount || "0");
       remaining = remainingPrice(total, advance || "0");
     } catch (error) {
       calculationError = (error as Error).message;
@@ -334,6 +337,31 @@ export function ClientForm({
       >
         <legend className="mb-3 font-bold text-indigo-600">Montants</legend>
         <label className="block text-sm font-semibold">
+          Service supplémentaire (facultatif)
+          <input
+            className="field mt-2"
+            name="extraLabel"
+            type="text"
+            maxLength={120}
+            placeholder="Ex. retouches, tirages, déplacement…"
+            value={extraLabel}
+            onChange={(event) => setExtraLabel(event.target.value)}
+          />
+        </label>
+        <label className="block text-sm font-semibold">
+          Montant du service supplémentaire (DH)
+          <input
+            className="field mt-2"
+            name="extraAmount"
+            type="number"
+            min="0"
+            max="99999999.99"
+            step="0.01"
+            value={extraAmount}
+            onChange={(event) => setExtraAmount(event.target.value)}
+          />
+        </label>
+        <label className="block text-sm font-semibold">
           Réduction (DH)
           <input
             className="field mt-2"
@@ -405,18 +433,18 @@ export function ClientForm({
               <dd className="shrink-0 font-semibold">{formatDh(item.price)}</dd>
             </div>
           ))}
+          {Number(extraAmount || "0") > 0 && (
+            <div className="flex justify-between gap-4 text-slate-600">
+              <dt>{extraLabel.trim() || "Service supplémentaire"}</dt>
+              <dd className="shrink-0 font-semibold">
+                {formatDh(extraAmount || "0")}
+              </dd>
+            </div>
+          )}
           <div className="flex justify-between border-t border-slate-100 pt-3">
             <dt>Sous-total</dt>
             <dd className="font-bold">
-              {base === null
-                ? "—"
-                : formatDh(
-                    (
-                      (cents(base) +
-                        chosen.reduce((sum, s) => sum + cents(s.price), 0)) /
-                      100
-                    ).toFixed(2),
-                  )}
+              {subtotal === null ? "—" : formatDh(subtotal)}
             </dd>
           </div>
           <div className="flex justify-between text-emerald-700">
