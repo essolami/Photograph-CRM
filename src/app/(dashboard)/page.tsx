@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
-import { type SupplementChoice } from "@/lib/client-data";
+import { emptyClientFilters } from "@/lib/client-data";
+import { clientsPage } from "@/lib/client-list";
 import { prisma } from "@/lib/prisma";
 import { ClientManager } from "../client-manager";
 import { canEditDrive, requireUser, userRole } from "@/lib/auth";
@@ -8,10 +9,9 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-const getClientPageData = unstable_cache(
+const getCatalog = unstable_cache(
   async () =>
     Promise.all([
-      prisma.client.findMany({ orderBy: { createdAt: "desc" }, include: { togeSale: true } }),
       prisma.pack.findMany({
         where: { isActive: true },
         include: {
@@ -26,8 +26,8 @@ const getClientPageData = unstable_cache(
       prisma.photographer.findMany({ orderBy: { name: "asc" } }),
       prisma.editor.findMany({ orderBy: { name: "asc" } }),
     ]),
-  ["client-page-data"],
-  { revalidate: 300, tags: ["clients"] },
+  ["client-catalog"],
+  { revalidate: 300, tags: ["settings", "clients"] },
 );
 
 function ClientListLoading() {
@@ -81,30 +81,13 @@ function ClientListLoading() {
 
 async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUser>> }) {
   const privateData = ["ADMIN", "MANAGER"].includes(userRole(user));
-  const [clients, packs, supplements, photographers, editors] =
-    await getClientPageData();
-  const records = clients.map((c) => ({
-    ...c,
-    togeColor: c.togeSale?.color ?? null,
-    togeSize: c.togeSale?.size ?? null,
-    togeLocation: c.togeSale?.location ?? null,
-    togeSale: undefined,
-    phone: privateData ? c.phone : null,
-    email: privateData ? c.email : null,
-    defenseDate: c.defenseDate
-      ? new Date(c.defenseDate).toISOString().slice(0, 10)
-      : "",
-    defenseTime: c.defenseTime,
-    basePrice: privateData ? c.basePrice.toString() : "",
-    supplements: c.supplements as SupplementChoice[],
-    extraLabel: c.extraLabel ?? null,
-    // La colonne peut manquer tant que la migration n'est pas appliquée.
-    extraAmount: privateData ? (c.extraAmount?.toString() ?? "0") : "",
-    discount: privateData ? c.discount.toString() : "",
-    total: privateData ? c.total.toString() : "",
-    advance: privateData ? c.advance.toString() : "",
-    grossProfit: privateData ? c.grossProfit?.toString() ?? "" : "",
-  }));
+  // Seule la première page est rendue côté serveur ; la suite est chargée à la
+  // demande par `fetchClientsPage`.
+  const [{ rows, total }, [packs, supplements, photographers, editors]] =
+    await Promise.all([
+      clientsPage(emptyClientFilters, 1, privateData),
+      getCatalog(),
+    ]);
   const catalog = {
     packs: packs.map((p) => ({
       id: p.id,
@@ -121,7 +104,7 @@ async function ClientData({ user }: { user: Awaited<ReturnType<typeof requireUse
     editors: editors.map((p) => ({ id: p.id, name: p.name, isActive: p.isActive })),
   };
 
-  return <ClientManager clients={records} catalog={catalog} canManage={user.canManageClients} canEditDrive={canEditDrive(user)} canViewPrivate={privateData} canExport={user.canManageUsers} />;
+  return <ClientManager initialClients={rows} initialTotal={total} catalog={catalog} canManage={user.canManageClients} canEditDrive={canEditDrive(user)} canViewPrivate={privateData} canExport={user.canManageUsers} />;
 }
 
 export default async function Home() {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { colors, elementPrices, elements, locations, sizes } from "./options";
+import { sanitizeTogeFilters, togesPage, type TogePage } from "@/lib/toge-list";
 
 export type SavedToge = {
   id: number;
@@ -78,6 +79,13 @@ export async function updateTogeDelivered(id: number, isDelivered: boolean): Pro
   } catch {
     return { error: "Impossible de modifier le statut." };
   }
+}
+
+export async function fetchTogesPage(filters: unknown, page: unknown): Promise<TogePage> {
+  await requirePermission("canManageClients");
+  const requested = Number(page);
+  const safePage = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
+  return togesPage(sanitizeTogeFilters(filters), safePage);
 }
 
 export async function deleteToge(id: number): Promise<TogeState> {

@@ -16,7 +16,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">
+      {/* Les extensions de navigateur ajoutent leurs attributs sur <body>
+          avant l'hydratation (ColorZilla pose `cz-shortcut-listen`). On ignore
+          ces écarts sur cet élément uniquement ; ses enfants restent vérifiés. */}
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

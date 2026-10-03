@@ -27,3 +27,26 @@ export const sizes = ["XS", "S", "M", "L", "XL"] as const;
 export const locations = ["CASABLANCA", "HORS CASABLANCA"] as const;
 
 export const togeOptions = { elements, colors, sizes, locations };
+
+export type TogeFilters = {
+  query: string;
+  location: string;
+  color: string;
+  size: string;
+  element: string;
+  delivered: string;
+  payment: string;
+  from: string;
+  to: string;
+};
+export const emptyTogeFilters: TogeFilters = {
+  query: "",
+  location: "",
+  color: "",
+  size: "",
+  element: "",
+  delivered: "",
+  payment: "",
+  from: "",
+  to: "",
+};

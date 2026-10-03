@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ActionIcon } from "./action-icon";
 import { deleteClient, updateClientPaid, updateClientQuick } from "./actions";
@@ -8,14 +8,19 @@ import { ClientImport } from "./client-import";
 import { ClientExport } from "./client-export";
 import { ClientPdfExport } from "./client-pdf-export";
 import { SettingsDrawer } from "./(dashboard)/parametres/settings-drawer";
+import { Pagination } from "./pagination";
 import {
   totalPrice,
   formatDh,
   remainingPrice,
   projectStatuses,
+  emptyClientFilters,
+  PAGE_SIZE,
+  type ClientFilters,
   type ClientRecord,
   type ClientCatalog,
 } from "@/lib/client-data";
+import { fetchClientsPage } from "./client-list-actions";
 const dateLabel = (value: string) =>
   value
     ? new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC" }).format(
@@ -23,30 +28,28 @@ const dateLabel = (value: string) =>
       )
     : "À renseigner";
 export function ClientManager({
-  clients,
+  initialClients,
+  initialTotal,
   catalog,
   canManage,
   canEditDrive,
   canViewPrivate,
   canExport,
 }: {
-  clients: ClientRecord[];
+  initialClients: ClientRecord[];
+  initialTotal: number;
   catalog: ClientCatalog;
   canManage: boolean;
   canEditDrive: boolean;
   canViewPrivate: boolean;
   canExport: boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
-  const [pack, setPack] = useState("");
-  const [photographer, setPhotographer] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [todayOnly, setTodayOnly] = useState(false);
-  const [facultyFilter, setFacultyFilter] = useState<
-    "" | "FMDC/FMPC" | "Autres"
-  >("");
+  const [filters, setFilters] = useState(emptyClientFilters);
+  const [page, setPage] = useState(1);
+  const [clients, setClients] = useState(initialClients);
+  const [total, setTotal] = useState(initialTotal);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<ClientRecord | "new" | null>(null);
   const [viewing, setViewing] = useState<ClientRecord | null>(null);
   const [notice, setNotice] = useState("");
@@ -58,28 +61,60 @@ export function ClientManager({
   const rollbackOptimistic = (id: number) => setOptimistic((current) => { const next = { ...current }; delete next[id]; return next; });
   const displayClients = clients.map((client) => ({ ...client, ...optimistic[client.id] }));
   const router = useRouter();
-  const normalize = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLocaleLowerCase("fr");
-  const filtered = displayClients.filter(
-    (c) =>
-      normalize(`${c.name} ${c.phone ?? ""} ${c.email ?? ""}`).includes(
-        normalize(query.trim()),
-      ) &&
-      (!status || c.status === status) &&
-      (!pack || String(c.packId) === pack) &&
-      (!photographer ||
-        (photographer === "none"
-          ? !c.photographerId
-          : String(c.photographerId) === photographer)) &&
-      (!from || c.defenseDate >= from) &&
-      (!to || (Boolean(c.defenseDate) && c.defenseDate <= to)) &&
-      (!todayOnly || c.defenseDate === new Date().toISOString().slice(0, 10)) &&
-      (!facultyFilter ||
-        normalize(c.facultyName ?? "") === normalize(facultyFilter)),
-  );
+  const requestKey = JSON.stringify([filters, page]);
+  const latestRequest = useRef(requestKey);
+  // Clé des données actuellement affichées : la première page vient du serveur.
+  const loadedKey = useRef(requestKey);
+  const reload = useCallback(async (nextFilters: ClientFilters, nextPage: number) => {
+    const key = JSON.stringify([nextFilters, nextPage]);
+    latestRequest.current = key;
+    setLoading(true);
+    try {
+      const result = await fetchClientsPage(nextFilters, nextPage);
+      // Une r\u00e9ponse plus ancienne ne doit pas \u00e9craser la derni\u00e8re demande.
+      if (latestRequest.current !== key) return;
+      setClients(result.rows);
+      setTotal(result.total);
+      setOptimistic({});
+      setError("");
+    } catch {
+      if (latestRequest.current === key)
+        setError("Impossible de charger les clients. R\u00e9essayez.");
+    } finally {
+      if (latestRequest.current === key) setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    // Recharger d\u00e8s que la demande diff\u00e8re des donn\u00e9es affich\u00e9es, y compris en
+    // revenant sur une page d\u00e9j\u00e0 visit\u00e9e.
+    if (requestKey === loadedKey.current) return;
+    loadedKey.current = requestKey;
+    void reload(filters, page);
+  }, [requestKey, filters, page, reload]);
+  // La recherche interroge la base : on attend une courte pause de frappe.
+  useEffect(() => {
+    if (search === filters.query) return;
+    const timer = setTimeout(() => {
+      setFilters((current) => ({ ...current, query: search }));
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, filters.query]);
+  const setFilter = <K extends keyof ClientFilters>(key: K, value: ClientFilters[K]) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  };
+  const resetFilters = () => {
+    setSearch("");
+    setFilters(emptyClientFilters);
+    setPage(1);
+  };
+  const hasFilters =
+    Boolean(search) ||
+    JSON.stringify(filters) !== JSON.stringify(emptyClientFilters);
+  const refresh = () => void reload(filters, page);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE;
   const packOptions = Array.from(
     new Map([
       ...catalog.packs.map((p) => [p.id, p.name] as const),
@@ -151,6 +186,7 @@ export function ClientManager({
       data.set("id", String(c.id));
       await deleteClient(data);
       setNotice("Client supprimé.");
+      refresh();
     } catch {
       setError("Impossible de supprimer ce client.");
     } finally {
@@ -277,8 +313,8 @@ export function ClientManager({
               className="field mt-2"
               type="search"
               placeholder="Rechercher par nom, email, Télephone...."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           <div className="flex items-end gap-3">
@@ -288,8 +324,8 @@ export function ClientManager({
               </p>
               <button
                 type="button"
-                className={`rounded-xl border px-3 py-3 text-xs font-semibold ${todayOnly ? "border-indigo-200 bg-indigo-600 text-white" : "border-slate-200 text-slate-600"}`}
-                onClick={() => setTodayOnly((current) => !current)}
+                className={`rounded-xl border px-3 py-3 text-xs font-semibold ${filters.todayOnly ? "border-indigo-200 bg-indigo-600 text-white" : "border-slate-200 text-slate-600"}`}
+                onClick={() => setFilter("todayOnly", !filters.todayOnly)}
               >
                 Soutenances du jour
               </button>
@@ -309,17 +345,15 @@ export function ClientManager({
                   <button
                     key={label}
                     type="button"
-                    className={`rounded-lg px-2.5 py-2 text-xs font-semibold transition ${facultyFilter === value ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                    onClick={() => setFacultyFilter(value)}
+                    className={`rounded-lg px-2.5 py-2 text-xs font-semibold transition ${filters.faculty === value ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    onClick={() => setFilter("faculty", value)}
                   >
                     {label}
                   </button>
                 ))}
               </div>
             </div>
-            {canExport && (
-              <ClientExport clients={displayClients} catalog={catalog} />
-            )}
+            {canExport && <ClientExport filters={filters} catalog={catalog} />}
             {canExport && (
               <ClientPdfExport />
             )}
@@ -364,28 +398,28 @@ export function ClientManager({
             </legend>
             <div className="flex flex-wrap gap-2">
               <label
-                className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${!status ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
+                className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${!filters.status ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
               >
                 <input
                   className="sr-only"
                   type="radio"
                   name="status-filter"
-                  checked={!status}
-                  onChange={() => setStatus("")}
+                  checked={!filters.status}
+                  onChange={() => setFilter("status", "")}
                 />
                 Tous
               </label>
               {projectStatuses.map((value) => (
                 <label
                   key={value}
-                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${status === value ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold ${filters.status === value ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500"}`}
                 >
                   <input
                     className="sr-only"
                     type="radio"
                     name="status-filter"
-                    checked={status === value}
-                    onChange={() => setStatus(value)}
+                    checked={filters.status === value}
+                    onChange={() => setFilter("status", value)}
                   />
                   {value}
                 </label>
@@ -398,7 +432,7 @@ export function ClientManager({
                 <p className="text-xs font-semibold text-slate-700">Importer des clients</p>
                 <p className="mt-1 text-xs text-slate-500">Ajoutez plusieurs clients depuis un fichier Excel ou CSV.</p>
               </div>
-              <ClientImport packs={catalog.packs.map((pack) => ({ id: pack.id, name: pack.name }))} onDone={() => router.refresh()} />
+              <ClientImport packs={catalog.packs.map((pack) => ({ id: pack.id, name: pack.name }))} onDone={() => { router.refresh(); refresh(); }} />
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -406,8 +440,8 @@ export function ClientManager({
               Pack
               <select
                 className="field mt-2"
-                value={pack}
-                onChange={(e) => setPack(e.target.value)}
+                value={filters.packId}
+                onChange={(e) => setFilter("packId", e.target.value)}
               >
                 <option value="">Tous les packs</option>
                 {packOptions.map(([id, name]) => (
@@ -421,8 +455,8 @@ export function ClientManager({
               Photographe
               <select
                 className="field mt-2"
-                value={photographer}
-                onChange={(e) => setPhotographer(e.target.value)}
+                value={filters.photographerId}
+                onChange={(e) => setFilter("photographerId", e.target.value)}
               >
                 <option value="">Tous les photographes</option>
                 <option value="none">Non affecté</option>
@@ -438,9 +472,9 @@ export function ClientManager({
               <input
                 type="date"
                 className="field mt-2"
-                value={from}
-                max={to || undefined}
-                onChange={(e) => setFrom(e.target.value)}
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={(e) => setFilter("from", e.target.value)}
               />
             </label>
             <label className="text-xs font-semibold text-slate-500">
@@ -448,9 +482,9 @@ export function ClientManager({
               <input
                 type="date"
                 className="field mt-2"
-                value={to}
-                min={from || undefined}
-                onChange={(e) => setTo(e.target.value)}
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={(e) => setFilter("to", e.target.value)}
               />
             </label>
           </div>
@@ -458,29 +492,12 @@ export function ClientManager({
       </div>
       <div className="mb-3 flex items-center justify-between">
         <p role="status" className="text-sm text-slate-500">
-          {filtered.length} client(s) sur {displayClients.length}
+          {loading
+            ? "Chargement…"
+            : `${total} client(s)${hasFilters ? " correspondant aux filtres" : ""}`}
         </p>
-        {(query ||
-          status ||
-          pack ||
-          photographer ||
-          from ||
-          to ||
-          todayOnly ||
-          facultyFilter) && (
-          <button
-            className="action-button"
-            onClick={() => {
-              setQuery("");
-              setStatus("");
-              setPack("");
-              setPhotographer("");
-              setFrom("");
-              setTo("");
-              setTodayOnly(false);
-              setFacultyFilter("");
-            }}
-          >
+        {hasFilters && (
+          <button className="action-button" onClick={resetFilters}>
             Réinitialiser les filtres
           </button>
         )}
@@ -495,7 +512,7 @@ export function ClientManager({
           {error}
         </p>
       )}
-      <div className="client-list overflow-x-auto rounded-2xl border border-indigo-100 bg-white shadow-[0_8px_30px_rgba(79,70,229,0.06)]">
+      <div className={`client-list overflow-x-auto rounded-2xl border border-indigo-100 bg-white shadow-[0_8px_30px_rgba(79,70,229,0.06)] transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>
         <table className="studio-table w-full text-left text-sm">
           <caption className="sr-only">Liste des clients</caption>
           <thead className="border-b border-indigo-100 bg-indigo-50/80 text-indigo-800">
@@ -517,7 +534,7 @@ export function ClientManager({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {displayClients.map((c) => (
               <tr
                 key={c.id}
                 className="cursor-pointer border-b border-slate-100 transition hover:bg-indigo-50/40"
@@ -692,18 +709,29 @@ export function ClientManager({
                 </td>
               </tr>
             ))}
-            {!filtered.length && (
+            {!displayClients.length && (
               <tr>
                 <td colSpan={8} className="p-10 text-center text-slate-500">
-                  {displayClients.length
-                    ? "Aucun client ne correspond aux filtres."
-                    : "Aucun client enregistré."}
+                  {loading
+                    ? "Chargement des clients…"
+                    : hasFilters
+                      ? "Aucun client ne correspond aux filtres."
+                      : "Aucun client enregistré."}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        start={start}
+        end={start + displayClients.length}
+        total={total}
+        noun="clients"
+        onPage={setPage}
+      />
       {viewing && (
         <SettingsDrawer
           compact
@@ -783,12 +811,12 @@ export function ClientManager({
             <ClientForm
               client={editing === "new" ? undefined : editing}
               catalog={catalog}
-              onDone={() => setEditing(null)}
+              onDone={() => { setEditing(null); refresh(); }}
               onOptimistic={editing === "new" ? undefined : applyOptimisticClient}
               onError={editing === "new" ? undefined : () => rollbackOptimistic(editing.id)}
             />
           ) : canEditDrive && editing !== "new" ? (
-            <DriveLinkForm client={editing} onDone={() => setEditing(null)} />
+            <DriveLinkForm client={editing} onDone={() => { setEditing(null); refresh(); }} />
           ) : (
             editing !== "new" && (
               <dl className="space-y-4">

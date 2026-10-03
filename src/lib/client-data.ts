@@ -7,6 +7,29 @@ export const projectStatuses = [
   "Annulé",
 ] as const;
 export type SupplementChoice = { id: number; name: string; price: string };
+// Les listes sont chargées page par page depuis la base.
+export const PAGE_SIZE = 50;
+export type ClientFilters = {
+  query: string;
+  status: string;
+  packId: string;
+  photographerId: string;
+  from: string;
+  to: string;
+  todayOnly: boolean;
+  faculty: string;
+};
+export const emptyClientFilters: ClientFilters = {
+  query: "",
+  status: "",
+  packId: "",
+  photographerId: "",
+  from: "",
+  to: "",
+  todayOnly: false,
+  faculty: "",
+};
+export type ClientPage = { rows: ClientRecord[]; total: number };
 export type ClientRecord = {
   id: number;
   name: string;

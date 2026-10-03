@@ -1,9 +1,26 @@
 "use client";
+import { useState, useTransition } from "react";
 import * as XLSX from "xlsx";
-import type { ClientRecord, ClientCatalog } from "@/lib/client-data";
+import type { ClientFilters, ClientCatalog } from "@/lib/client-data";
+import { fetchClientsForExport } from "./client-list-actions";
 
-export function ClientExport({ clients, catalog }: { clients: ClientRecord[]; catalog: ClientCatalog }) {
-  function download() {
+export function ClientExport({ filters, catalog }: { filters: ClientFilters; catalog: ClientCatalog }) {
+  const [pending, startExport] = useTransition();
+  const [error, setError] = useState("");
+  // La liste est paginée : l'export récupère tous les dossiers filtrés.
+  const download = () => startExport(async () => {
+    setError("");
+    let clients;
+    try {
+      clients = await fetchClientsForExport(filters);
+    } catch {
+      setError("Export impossible. Réessayez.");
+      return;
+    }
+    if (!clients.length) {
+      setError("Aucun client à exporter.");
+      return;
+    }
     const rows = clients.map((client) => {
       const supplements = new Map(client.supplements.map((item) => [item.name.toLocaleLowerCase(), item]));
       const has = (name: string) => [...supplements.keys()].some((value) => value.includes(name));
@@ -46,6 +63,6 @@ export function ClientExport({ clients, catalog }: { clients: ClientRecord[]; ca
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
     XLSX.writeFile(workbook, `clients-${new Date().toISOString().slice(0, 10)}.xlsx`);
-  }
-  return <button type="button" className="icon-action border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" onClick={download} title="Exporter les clients en Excel" aria-label="Exporter les clients en Excel"><svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[1.8]" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h10l4 4v14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5M8 12h8M8 16h8M8 20h5" /></svg><span className="sr-only">Excel</span></button>;
+  });
+  return <button type="button" className="icon-action border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50" onClick={download} disabled={pending} title={error || "Exporter les clients en Excel"} aria-label="Exporter les clients en Excel">{pending ? <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 animate-spin fill-none stroke-current stroke-[1.8]" strokeLinecap="round"><path d="M12 3a9 9 0 1 0 9 9" /></svg> : <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-[1.8]" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h10l4 4v14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5M8 12h8M8 16h8M8 20h5" /></svg>}<span className="sr-only">{error || "Excel"}</span></button>;
 }
