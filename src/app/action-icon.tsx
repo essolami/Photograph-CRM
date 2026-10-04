@@ -1,7 +1,7 @@
 export function ActionIcon({
   name,
 }: {
-  name: "edit" | "delete" | "view" | "save" | "loading" | "whatsapp";
+  name: "edit" | "delete" | "view" | "save" | "loading" | "whatsapp" | "calendar";
 }) {
   return (
     <svg
@@ -27,6 +27,11 @@ export function ActionIcon({
       ) : name === "save" ? (
         <>
           <path d="M4 3h13l4 4v14H3V3h1ZM7 3v6h10V3M7 21v-8h10v8" />
+        </>
+      ) : name === "calendar" ? (
+        <>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M16 3v4M8 3v4M3 11h18M12 14v5M9.5 16.5h5" />
         </>
       ) : name === "whatsapp" ? (
         <>

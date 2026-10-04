@@ -21,6 +21,7 @@ import {
   type ClientCatalog,
 } from "@/lib/client-data";
 import { fetchClientsPage } from "./client-list-actions";
+import { googleCalendarEventUrl } from "@/lib/calendar-link";
 const dateLabel = (value: string) =>
   value
     ? new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC" }).format(
@@ -147,6 +148,35 @@ export function ClientManager({
     } catch {
       return [];
     }
+  };
+  // Ouvre Google Agenda avec l'événement pré-rempli, dans le compte déjà
+  // connecté sur le poste : rien à configurer côté Google.
+  const calendarUrl = (client: ClientRecord) => {
+    let amounts: { total: string; advance: string; remaining: string } | null = null;
+    if (canViewPrivate && client.total) {
+      try {
+        amounts = {
+          total: formatDh(client.total),
+          advance: formatDh(client.advance || "0"),
+          remaining: formatDh(remainingPrice(client.total, client.advance || "0")),
+        };
+      } catch {
+        amounts = null;
+      }
+    }
+    return googleCalendarEventUrl({
+      name: client.name,
+      defenseDate: client.defenseDate,
+      defenseTime: client.defenseTime,
+      facultyName: client.facultyName,
+      packName: client.packName,
+      isDuo: client.isDuo,
+      supplements: client.supplements,
+      phone: canViewPrivate ? client.phone : null,
+      photographerName: catalog.photographers.find((item) => item.id === client.photographerId)?.name ?? null,
+      comment: client.comment,
+      amounts,
+    });
   };
   const photographerWhatsAppUrl = (client: ClientRecord) => {
     const photographer = catalog.photographers.find(
@@ -664,6 +694,19 @@ export function ClientManager({
                 </td>
                 <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   <div className="flex gap-1">
+                    {calendarUrl(c) && (
+                      <a
+                        className="icon-action bg-sky-50 text-sky-600 hover:border-sky-200 hover:bg-sky-100"
+                        href={calendarUrl(c)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Ajouter à Google Agenda"
+                        aria-label={`Ajouter la soutenance de ${c.name} à Google Agenda`}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <ActionIcon name="calendar" />
+                      </a>
+                    )}
                     {canViewPrivate && whatsappUrl(c.phone) && (
                       <a
                         className="icon-action bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100"
