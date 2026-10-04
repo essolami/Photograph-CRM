@@ -9,6 +9,8 @@ export const projectStatuses = [
 export type SupplementChoice = { id: number; name: string; price: string };
 // Les listes sont chargées page par page depuis la base.
 export const PAGE_SIZE = 50;
+// "" garde l'ordre d'ajout (les plus récents d'abord).
+export type ClientSort = "" | "date-desc";
 export type ClientFilters = {
   query: string;
   status: string;
@@ -18,6 +20,7 @@ export type ClientFilters = {
   to: string;
   todayOnly: boolean;
   faculty: string;
+  sort: ClientSort;
 };
 export const emptyClientFilters: ClientFilters = {
   query: "",
@@ -28,6 +31,7 @@ export const emptyClientFilters: ClientFilters = {
   to: "",
   todayOnly: false,
   faculty: "",
+  sort: "",
 };
 export type ClientPage = { rows: ClientRecord[]; total: number };
 export type ClientRecord = {

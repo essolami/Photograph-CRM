@@ -28,7 +28,21 @@ export function sanitizeClientFilters(input: unknown): ClientFilters {
     to: isDay(text(raw.to, 10)) ? text(raw.to, 10) : "",
     todayOnly: raw.todayOnly === true,
     faculty: text(raw.faculty, 120),
+    sort: raw.sort === "date-desc" ? "date-desc" : "",
   };
+}
+
+// Tri par soutenance : la date puis l'heure, les dossiers sans date en dernier.
+function clientOrder(sort: ClientFilters["sort"]): Prisma.ClientOrderByWithRelationInput[] {
+  if (sort === "date-desc")
+    return [
+      { defenseDate: { sort: "desc", nulls: "last" } },
+      { defenseTime: { sort: "desc", nulls: "last" } },
+      { id: "desc" },
+    ];
+  // Le second critère fige l'ordre : sans lui, deux dossiers créés dans la même
+  // milliseconde pourraient changer de page entre deux requêtes.
+  return [{ createdAt: "desc" }, { id: "desc" }];
 }
 
 export function clientWhere(filters: ClientFilters): Prisma.ClientWhereInput {
@@ -100,12 +114,9 @@ export function toClientRecord(client: ClientRow, privateData: boolean): ClientR
   };
 }
 
-const listQuery = {
-  include: { togeSale: { select: { color: true, size: true, location: true } } },
-  // Le second critère fige l'ordre : sans lui, deux dossiers créés dans la même
-  // milliseconde pourraient changer de page entre deux requêtes.
-  orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-} satisfies Prisma.ClientFindManyArgs;
+const listInclude = {
+  togeSale: { select: { color: true, size: true, location: true } },
+} satisfies Prisma.ClientInclude;
 
 export async function clientsPage(
   filters: ClientFilters,
@@ -115,7 +126,8 @@ export async function clientsPage(
   const where = clientWhere(filters);
   const [rows, total] = await Promise.all([
     prisma.client.findMany({
-      ...listQuery,
+      include: listInclude,
+      orderBy: clientOrder(filters.sort),
       where,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -131,7 +143,8 @@ export async function clientsForExport(
   privateData: boolean,
 ): Promise<ClientRecord[]> {
   const rows = await prisma.client.findMany({
-    ...listQuery,
+    include: listInclude,
+    orderBy: clientOrder(filters.sort),
     where: clientWhere(filters),
     take: 5000,
   });

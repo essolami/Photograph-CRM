@@ -362,6 +362,25 @@ export function ClientManager({
             </div>
             <div>
               <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-slate-400 uppercase">
+                Trier
+              </p>
+              <button
+                type="button"
+                aria-pressed={filters.sort === "date-desc"}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold ${filters.sort === "date-desc" ? "border-indigo-200 bg-indigo-600 text-white" : "border-slate-200 text-slate-600"}`}
+                title={
+                  filters.sort === "date-desc"
+                    ? "Tri actif : soutenances les plus récentes en premier"
+                    : "Trier par soutenance, la plus récente en premier"
+                }
+                onClick={() => setFilter("sort", filters.sort === "date-desc" ? "" : "date-desc")}
+              >
+                Soutenance
+                <span aria-hidden="true">↓</span>
+              </button>
+            </div>
+            <div>
+              <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-slate-400 uppercase">
                 Faculté
               </p>
               <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
@@ -591,6 +610,9 @@ export function ClientManager({
                 </td>
                 <td className="px-4 whitespace-nowrap">
                   {dateLabel(c.defenseDate)}
+                  <p className="text-xs font-semibold text-indigo-600">
+                    {c.defenseTime ? `${c.defenseTime.replace(":", "h")}` : "Heure à définir"}
+                  </p>
                 </td>
                 <td className="px-4" onClick={(event) => event.stopPropagation()}>
                   <p
